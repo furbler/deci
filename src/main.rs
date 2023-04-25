@@ -1,5 +1,11 @@
 use std::io::{self, stdout, Read};
 use termion::raw::IntoRawMode;
+
+fn to_ctrl_byte(c: char) -> u8 {
+    let byte = c as u8;
+    byte & 0b0001_1111
+}
+
 fn main() {
     let _stdout = stdout().into_raw_mode().unwrap();
 
@@ -7,11 +13,14 @@ fn main() {
         let b = b.unwrap();
         let c = b as char;
         if c.is_control() {
-            println!("{:?} \r", b);
+            // 2進数, 10進数
+            println!("{:08b}, {:?}\r", b, b);
         } else {
-            println!("{:?} ({})\r", b, c);
+            // 2進数, 10進数 (文字)
+            println!("{:08b}, {:?} ({})\r", b, b, c);
         }
-        if c == 'q' {
+
+        if b == to_ctrl_byte('q') {
             break;
         }
     }
