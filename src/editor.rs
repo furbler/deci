@@ -34,7 +34,7 @@ impl Editor {
     }
 
     pub fn default() -> Self {
-        Editor {}
+        Self {}
     }
 }
 
