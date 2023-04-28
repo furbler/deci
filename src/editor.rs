@@ -1,4 +1,4 @@
-use std::io::{self, stdout};
+use std::io::{self, stdout, Write};
 use termion::event::Key;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
@@ -11,17 +11,26 @@ impl Editor {
     pub fn run(&mut self) {
         let _stdout = stdout().into_raw_mode().unwrap();
         loop {
-            if let Err(error) = self.process_keypress() {
+            if let Err(error) = self.refresh_screen() {
                 die(error);
             }
             // 終了フラグが立っていたらループを抜ける
             if self.should_quit {
                 break;
             }
+            if let Err(error) = self.process_keypress() {
+                die(error);
+            }
         }
     }
     pub fn default() -> Self {
         Self { should_quit: false }
+    }
+    fn refresh_screen(&self) -> Result<(), std::io::Error> {
+        // print!("\x1b[2J");
+        print!("{}", termion::clear::All);
+        // バッファの内容を出力
+        io::stdout().flush()
     }
     fn process_keypress(&mut self) -> Result<(), std::io::Error> {
         let pressed_key = read_key()?;
