@@ -29,6 +29,10 @@ impl Editor {
     fn refresh_screen(&self) -> Result<(), std::io::Error> {
         // 画面をクリアして、一番左上にカーソルを置く
         print!("{}{}", termion::clear::All, termion::cursor::Goto(1, 1));
+        // 終了時にメッセージを出力
+        if self.should_quit {
+            println!("エディタを終了します。さようなら。\r");
+        }
         // バッファの内容を出力
         io::stdout().flush()
     }
@@ -49,5 +53,7 @@ fn read_key() -> Result<Key, std::io::Error> {
     }
 }
 fn die(e: std::io::Error) {
+    // エラーで終了前に画面をクリア
+    print!("{}", termion::clear::All);
     panic!("{}", e);
 }
