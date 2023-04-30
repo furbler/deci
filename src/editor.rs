@@ -1,3 +1,4 @@
+use crate::Terminal;
 use std::io::{self, stdout, Write};
 use termion::event::Key;
 use termion::input::TermRead;
@@ -5,6 +6,7 @@ use termion::raw::IntoRawMode;
 
 pub struct Editor {
     should_quit: bool,
+    terminal: Terminal,
 }
 
 impl Editor {
@@ -24,7 +26,10 @@ impl Editor {
         }
     }
     pub fn default() -> Self {
-        Self { should_quit: false }
+        Self {
+            should_quit: false,
+            terminal: Terminal::default().expect("Failed to initialize terminal"),
+        }
     }
     fn refresh_screen(&self) -> Result<(), std::io::Error> {
         // 画面をクリアして、一番左上にカーソルを置く
@@ -50,7 +55,7 @@ impl Editor {
     }
     // 行頭にチルダを表示
     fn draw_rows(&self) {
-        for _ in 0..46 {
+        for _ in 0..self.terminal.size().height {
             println!("~\r");
         }
     }
