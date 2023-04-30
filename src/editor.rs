@@ -32,6 +32,10 @@ impl Editor {
         // 終了時にメッセージを出力
         if self.should_quit {
             println!("エディタを終了します。さようなら。\r");
+        } else {
+            self.draw_rows();
+            // チルダ描画後にカーソルを左上に戻す
+            print!("{}", termion::cursor::Goto(1, 1));
         }
         // バッファの内容を出力
         io::stdout().flush()
@@ -43,6 +47,12 @@ impl Editor {
             _ => (),
         }
         Ok(())
+    }
+    // 行頭にチルダを表示
+    fn draw_rows(&self) {
+        for _ in 0..46 {
+            println!("~\r");
+        }
     }
 }
 fn read_key() -> Result<Key, std::io::Error> {
