@@ -29,11 +29,11 @@ impl Editor {
     }
     fn refresh_screen(&self) -> Result<(), std::io::Error> {
         Terminal::cursor_hide();
-        // 画面をクリアして、一番左上にカーソルを置く
-        Terminal::clear_screen();
+        // 一番左上にカーソルを置く
         Terminal::cursor_position(0, 0);
-        // 終了時にメッセージを出力
+        // 終了時に画面をクリアして、メッセージを出力
         if self.should_quit {
+            Terminal::clear_screen();
             println!("エディタを終了します。さようなら。\r");
         } else {
             self.draw_rows();
@@ -55,6 +55,7 @@ impl Editor {
     // 行頭にチルダを表示
     fn draw_rows(&self) {
         for _ in 0..self.terminal.size().height - 1 {
+            Terminal::clear_current_line();
             println!("~\r");
         }
     }
