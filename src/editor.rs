@@ -54,17 +54,31 @@ impl Editor {
         }
         Ok(())
     }
+    fn draw_welcome_message(&self) {
+        // バージョン情報を含めたメッセージ
+        let mut welcome_message = format!("Deci editor -- version {VERSION}");
+        // 画面幅とメッセージ幅を計算
+        let width = self.terminal.size().width as usize;
+        let len = welcome_message.len();
+        // メッセージを中央に置いたときの空けるべき余白を計算
+        let padding = width.saturating_sub(len) / 2;
+        let spaces = " ".repeat(padding.saturating_sub(1));
+        // 画面中央にメッセージを表示
+        welcome_message = format!("~{spaces}{welcome_message}");
+        welcome_message.truncate(width);
+        println!("{welcome_message}\r");
+    }
+
     fn draw_rows(&self) {
         let height = self.terminal.size().height;
         for row in 0..height - 1 {
             Terminal::clear_current_line();
             if row == height / 3 {
-                // バージョン情報を含めたメッセージを表示する
-                let welcome_message = format!("Deci editor -- version {VERSION}");
                 // メッセージが画面幅を超えていたら切り取る
-                let width =
-                    std::cmp::min(self.terminal.size().width as usize, welcome_message.len());
-                println!("{}\r", &welcome_message[..width])
+                self.draw_welcome_message();
+                // let width =
+                //     std::cmp::min(self.terminal.size().width as usize, welcome_message.len());
+                // println!("{}\r", &welcome_message[..width])
             } else {
                 // 行頭にチルダを表示
                 println!("~\r");
