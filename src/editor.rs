@@ -1,6 +1,6 @@
 use crate::Terminal;
 use termion::event::Key;
-
+// コンパイル時にバージョン情報を取得
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub struct Editor {
@@ -59,8 +59,12 @@ impl Editor {
         for row in 0..height - 1 {
             Terminal::clear_current_line();
             if row == height / 3 {
-                // バージョン情報を表示する
-                println!("Deci editor -- version {VERSION}\r");
+                // バージョン情報を含めたメッセージを表示する
+                let welcome_message = format!("Deci editor -- version {VERSION}");
+                // メッセージが画面幅を超えていたら切り取る
+                let width =
+                    std::cmp::min(self.terminal.size().width as usize, welcome_message.len());
+                println!("{}\r", &welcome_message[..width])
             } else {
                 // 行頭にチルダを表示
                 println!("~\r");
