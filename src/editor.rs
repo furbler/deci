@@ -28,6 +28,7 @@ impl Editor {
         }
     }
     fn refresh_screen(&self) -> Result<(), std::io::Error> {
+        Terminal::cursor_hide();
         // 画面をクリアして、一番左上にカーソルを置く
         Terminal::clear_screen();
         Terminal::cursor_position(0, 0);
@@ -39,6 +40,7 @@ impl Editor {
             // チルダ描画後にカーソルを左上に戻す
             Terminal::cursor_position(0, 0);
         }
+        Terminal::cursor_show();
         // バッファの内容を出力
         Terminal::flush()
     }
@@ -52,7 +54,7 @@ impl Editor {
     }
     // 行頭にチルダを表示
     fn draw_rows(&self) {
-        for _ in 0..self.terminal.size().height-1 {
+        for _ in 0..self.terminal.size().height - 1 {
             println!("~\r");
         }
     }
