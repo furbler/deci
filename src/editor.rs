@@ -18,14 +18,14 @@ impl Editor {
     pub fn run(&mut self) {
         loop {
             if let Err(error) = self.refresh_screen() {
-                die(error);
+                die(&error);
             }
             // 終了フラグが立っていたらループを抜ける
             if self.should_quit {
                 break;
             }
             if let Err(error) = self.process_keypress() {
-                die(error);
+                die(&error);
             }
         }
     }
@@ -79,6 +79,10 @@ impl Editor {
                     x = x.saturating_add(1);
                 };
             }
+            Key::PageUp | Key::Ctrl('b') => y = 0,
+            Key::PageDown | Key::Ctrl('f') => y = height,
+            Key::Home | Key::Char('0') => x = 0,
+            Key::End | Key::Char('$') => x = width,
             _ => (),
         }
         self.cursor_position = Position { x, y }
@@ -113,7 +117,7 @@ impl Editor {
     }
 }
 
-fn die(e: std::io::Error) {
+fn die(e: &std::io::Error) {
     // エラーで終了前に画面をクリア
     Terminal::clear_screen();
     panic!("{}", e);
