@@ -3,9 +3,15 @@ use termion::event::Key;
 // コンパイル時にバージョン情報を取得
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+pub struct Position {
+    pub x: usize,
+    pub y: usize,
+}
+
 pub struct Editor {
     should_quit: bool,
     terminal: Terminal,
+    cursor_position: Position,
 }
 
 impl Editor {
@@ -27,20 +33,20 @@ impl Editor {
         Self {
             should_quit: false,
             terminal: Terminal::default().expect("Failed to initialize terminal"),
+            cursor_position: Position { x: 3, y: 3 },
         }
     }
     fn refresh_screen(&self) -> Result<(), std::io::Error> {
         Terminal::cursor_hide();
-        // 一番左上にカーソルを置く
-        Terminal::cursor_position(0, 0);
+        // カーソルを行頭に戻す
+        Terminal::cursor_position(&Position { x: 0, y: 0 });
         // 終了時に画面をクリアして、メッセージを出力
         if self.should_quit {
             Terminal::clear_screen();
             println!("エディタを終了します。さようなら。\r");
         } else {
             self.draw_rows();
-            // チルダ描画後にカーソルを左上に戻す
-            Terminal::cursor_position(0, 0);
+            Terminal::cursor_position(&self.cursor_position);
         }
         Terminal::cursor_show();
         // バッファの内容を出力
@@ -76,9 +82,6 @@ impl Editor {
             if row == height / 3 {
                 // メッセージが画面幅を超えていたら切り取る
                 self.draw_welcome_message();
-                // let width =
-                //     std::cmp::min(self.terminal.size().width as usize, welcome_message.len());
-                // println!("{}\r", &welcome_message[..width])
             } else {
                 // 行頭にチルダを表示
                 println!("~\r");
