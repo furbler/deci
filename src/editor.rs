@@ -33,7 +33,7 @@ impl Editor {
         Self {
             should_quit: false,
             terminal: Terminal::default().expect("Failed to initialize terminal"),
-            cursor_position: Position { x: 3, y: 3 },
+            cursor_position: Position { x: 0, y: 0 },
         }
     }
     fn refresh_screen(&self) -> Result<(), std::io::Error> {
@@ -56,9 +56,21 @@ impl Editor {
         let pressed_key = Terminal::read_key()?;
         match pressed_key {
             Key::Ctrl('q') => self.should_quit = true,
-            _ => (),
+            _ => self.move_cursor(pressed_key),
         }
         Ok(())
+    }
+    // 入力したキーに応じてカーソル移動
+    fn move_cursor(&mut self, key: Key) {
+        let Position { mut y, mut x } = self.cursor_position;
+        match key {
+            Key::Up | Key::Char('k') => y = y.saturating_sub(1),
+            Key::Down | Key::Char('j') => y = y.saturating_add(1),
+            Key::Left | Key::Char('h') => x = x.saturating_sub(1),
+            Key::Right | Key::Char('l') => x = x.saturating_add(1),
+            _ => (),
+        }
+        self.cursor_position = Position { x, y }
     }
     fn draw_welcome_message(&self) {
         // バージョン情報を含めたメッセージ
