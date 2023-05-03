@@ -2,7 +2,7 @@ use std::cmp;
 pub struct Row {
     string: String,
 }
-
+// 文字列スライスからRowへの変換
 impl From<&str> for Row {
     fn from(slice: &str) -> Self {
         Self {

@@ -1,7 +1,9 @@
 use crate::Document;
 use crate::Row;
 use crate::Terminal;
+use std::env;
 use termion::event::Key;
+
 // コンパイル時にバージョン情報を取得
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -34,11 +36,23 @@ impl Editor {
         }
     }
     pub fn default() -> Self {
+        // コマンドの引数を取得
+        let args: Vec<String> = env::args().collect();
+        // 引数でファイル名が指定されていたら
+        let document = if args.len() > 1 {
+            let file_name = &args[1];
+            // 指定されたファイル名が開ければその内容を保存
+            // 失敗したらファイル名を指定しなかったときと同じ動作をする
+            Document::open(file_name).unwrap_or_default()
+        } else {
+            // 中身を空とする
+            Document::default()
+        };
         Self {
             should_quit: false,
             terminal: Terminal::default().expect("Failed to initialize terminal"),
             cursor_position: Position::default(),
-            document: Document::open(),
+            document,
         }
     }
     fn refresh_screen(&self) -> Result<(), std::io::Error> {
@@ -121,9 +135,8 @@ impl Editor {
             // 表示すべきファイルの行があれば表示する
             if let Some(row) = self.document.row(terminal_row as usize) {
                 self.draw_row(row);
-            } else if terminal_row == height / 3 {
-                // 1/3の高さの行に表示すべきファイルの行がなければ
-                // ウェルカムメッセージを表示する
+            } else if self.document.is_empty() && terminal_row == height / 3 {
+                // ドキュメントが空であれば、1/3の高さの行にウェルカムメッセージを表示する
                 self.draw_welcome_message();
             } else {
                 // 行頭にチルダを表示
