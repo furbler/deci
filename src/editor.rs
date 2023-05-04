@@ -145,8 +145,13 @@ impl Editor {
             }
             Key::Right | Key::Char('l') => {
                 if x < width {
-                    x = x.saturating_add(1);
-                };
+                    x += 1;
+                } else if y < document_height {
+                    // 行末で、かつドキュメントの最後の行でない場合
+                    // 下の行の行頭に移動
+                    y += 1;
+                    x = 0;
+                }
             }
             Key::PageUp | Key::Ctrl('b') => {
                 // 1画面分上に移動
