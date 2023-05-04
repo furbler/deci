@@ -3,13 +3,17 @@ use unicode_segmentation::UnicodeSegmentation;
 
 pub struct Row {
     string: String,
+    len: usize,
 }
 // 文字列スライスからRowへの変換
 impl From<&str> for Row {
     fn from(slice: &str) -> Self {
-        Self {
+        let mut row = Self {
             string: String::from(slice),
-        }
+            len: 0,
+        };
+        row.update_len();
+        row
     }
 }
 
@@ -32,6 +36,10 @@ impl Row {
         result
     }
     pub fn len(&self) -> usize {
-        self.string[..].graphemes(true).count()
+        self.len
+    }
+    // 複数バイト文字にも対応した文字数を返す
+    fn update_len(&mut self) {
+        self.len = self.string[..].graphemes(true).count();
     }
 }
