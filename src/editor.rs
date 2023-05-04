@@ -2,6 +2,8 @@ use crate::Document;
 use crate::Row;
 use crate::Terminal;
 use std::env;
+use std::time::Duration;
+use std::time::Instant;
 use termion::color;
 use termion::event::Key;
 
@@ -18,6 +20,19 @@ pub struct Position {
     pub y: usize,
 }
 
+struct StatusMessage {
+    text: String,
+    time: Instant,
+}
+impl StatusMessage {
+    fn from(message: String) -> Self {
+        Self {
+            time: Instant::now(),
+            text: message,
+        }
+    }
+}
+
 pub struct Editor {
     should_quit: bool,
     terminal: Terminal,
@@ -25,6 +40,7 @@ pub struct Editor {
     // 開いているドキュメントの先頭に対する画面左上の位置
     offset: Position,
     document: Document,
+    status_message: StatusMessage,
 }
 
 impl Editor {
@@ -37,6 +53,7 @@ impl Editor {
             if self.should_quit {
                 break;
             }
+            // キー入力が無い間は入力待ち状態で処理は進まない
             if let Err(error) = self.process_keypress() {
                 die(&error);
             }
@@ -45,12 +62,19 @@ impl Editor {
     pub fn default() -> Self {
         // コマンドの引数を取得
         let args: Vec<String> = env::args().collect();
+        let mut initial_status = String::from("HELP: Ctrl-Q = quit");
         // 引数でファイル名が指定されていたら
         let document = if args.len() > 1 {
             let file_name = &args[1];
+            let doc = Document::open(file_name);
             // 指定されたファイル名が開ければその内容を保存
-            // 失敗したらファイル名を指定しなかったときと同じ動作をする
-            Document::open(file_name).unwrap_or_default()
+            if let Ok(doc) = doc {
+                doc
+            } else {
+                // 失敗したらエラーメッセージを出してから、ファイル名を指定しなかったときと同じ動作をする
+                initial_status = format!("ERR: Could not open file: {file_name}");
+                Document::default()
+            }
         } else {
             // 中身を空とする
             Document::default()
@@ -61,6 +85,7 @@ impl Editor {
             cursor_position: Position::default(),
             document,
             offset: Position::default(),
+            status_message: StatusMessage::from(initial_status),
         }
     }
     fn refresh_screen(&self) -> Result<(), std::io::Error> {
@@ -257,7 +282,16 @@ impl Editor {
         Terminal::reset_bg_color();
     }
     fn draw_message_bar(&self) {
+        // メッセージバーをクリア
         Terminal::clear_current_line();
+        let message = &self.status_message;
+        // メッセージが表示開始から一定時間経過するまで表示
+        if message.time.elapsed() < Duration::new(5, 0) {
+            let mut text = message.text.clone();
+            // 画面からはみ出すメッセージ部分は削除
+            text.truncate(self.terminal.size().width as usize);
+            print!("{text}");
+        }
     }
 }
 
