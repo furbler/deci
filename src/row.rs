@@ -15,6 +15,7 @@ impl Row {
     pub fn render(&self, start: usize, end: usize) -> String {
         let end = cmp::min(end, self.string.len());
         let start = cmp::min(start, end);
+        // 指定範囲が文字列を外れていたら空文字列を返す
         self.string.get(start..end).unwrap_or_default().to_string()
     }
 }
