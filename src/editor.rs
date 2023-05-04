@@ -112,8 +112,9 @@ impl Editor {
     }
     // 入力したキーに応じてカーソル移動
     fn move_cursor(&mut self, key: Key) {
+        let terminal_height = self.terminal.size().height as usize;
         let Position { mut y, mut x } = self.cursor_position;
-        let height = self.document.len();
+        let document_height = self.document.len();
         let width = if let Some(row) = self.document.row(y) {
             row.len()
         } else {
@@ -122,7 +123,7 @@ impl Editor {
         match key {
             Key::Up | Key::Char('k') => y = y.saturating_sub(1),
             Key::Down | Key::Char('j') => {
-                if y < height {
+                if y < document_height {
                     y = y.saturating_add(1);
                 };
             }
@@ -132,8 +133,22 @@ impl Editor {
                     x = x.saturating_add(1);
                 };
             }
-            Key::PageUp | Key::Ctrl('b') => y = 0,
-            Key::PageDown | Key::Ctrl('f') => y = height,
+            Key::PageUp | Key::Ctrl('b') => {
+                // 1画面分上に移動
+                y = if y > terminal_height {
+                    y - terminal_height
+                } else {
+                    0
+                }
+            }
+            Key::PageDown | Key::Ctrl('f') => {
+                // 1画面分下に移動
+                y = if y.saturating_add(terminal_height) < document_height {
+                    y + terminal_height
+                } else {
+                    document_height
+                }
+            }
             Key::Home | Key::Char('0') => x = 0,
             Key::End | Key::Char('$') => x = width,
             _ => (),
