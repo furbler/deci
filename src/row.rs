@@ -1,4 +1,6 @@
 use std::cmp;
+use unicode_segmentation::UnicodeSegmentation;
+
 pub struct Row {
     string: String,
 }
@@ -12,13 +14,24 @@ impl From<&str> for Row {
 }
 
 impl Row {
+    // 行から指定した範囲のみを返す
     pub fn render(&self, start: usize, end: usize) -> String {
         let end = cmp::min(end, self.string.len());
         let start = cmp::min(start, end);
-        // 指定範囲が文字列を外れていたら空文字列を返す
-        self.string.get(start..end).unwrap_or_default().to_string()
+
+        let mut result = String::new();
+        // start番目からend番目まで(書記素単位)の文字列を返す
+        for grapheme in self.string[..]
+            .graphemes(true)
+            .skip(start)
+            .take(end - start)
+        {
+            // 書記素一文字ずつを文字列スライス型として追加していく
+            result.push_str(grapheme);
+        }
+        result
     }
     pub fn len(&self) -> usize {
-        self.string.len()
+        self.string[..].graphemes(true).count()
     }
 }
