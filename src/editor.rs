@@ -2,8 +2,10 @@ use crate::Document;
 use crate::Row;
 use crate::Terminal;
 use std::env;
+use termion::color;
 use termion::event::Key;
 
+const STATUS_BG_COLOR: color::Rgb = color::Rgb(239, 239, 239);
 // コンパイル時にバージョン情報を取得
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -68,6 +70,8 @@ impl Editor {
             println!("エディタを終了します。さようなら。\r");
         } else {
             self.draw_rows();
+            self.draw_status_bar();
+            self.draw_message_bar();
             // カーソルの画面上の位置を求めて、カーソルを表示する
             Terminal::cursor_position(&Position {
                 x: self.cursor_position.x.saturating_sub(self.offset.x),
@@ -201,7 +205,7 @@ impl Editor {
     }
     fn draw_rows(&self) {
         let height = self.terminal.size().height;
-        for terminal_row in 0..height - 1 {
+        for terminal_row in 0..height {
             Terminal::clear_current_line();
             // 表示すべきファイルの行があれば表示する
             if let Some(row) = self.document.row(terminal_row as usize + self.offset.y) {
@@ -214,6 +218,15 @@ impl Editor {
                 println!("~\r");
             }
         }
+    }
+    fn draw_status_bar(&self) {
+        let spaces = " ".repeat(self.terminal.size().width as usize);
+        Terminal::set_bg_color(STATUS_BG_COLOR);
+        println!("{spaces}\r");
+        Terminal::reset_bg_color();
+    }
+    fn draw_message_bar(&self) {
+        Terminal::clear_current_line();
     }
 }
 
