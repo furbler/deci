@@ -127,7 +127,22 @@ impl Editor {
                     y = y.saturating_add(1);
                 };
             }
-            Key::Left | Key::Char('h') => x = x.saturating_sub(1),
+            Key::Left | Key::Char('h') => {
+                if x > 0 {
+                    // 行頭でなければ左に移動
+                    x -= 1;
+                } else if y > 0 {
+                    // 行頭で、かつドキュメントの最初の行でない場合
+                    // 1つ上の行に移動
+                    y -= 1;
+                    // 行末に移動
+                    if let Some(row) = self.document.row(y) {
+                        x = row.len();
+                    } else {
+                        x = 0;
+                    }
+                }
+            }
             Key::Right | Key::Char('l') => {
                 if x < width {
                     x = x.saturating_add(1);
