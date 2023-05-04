@@ -30,8 +30,13 @@ impl Row {
             .skip(start)
             .take(end - start)
         {
-            // 書記素一文字ずつを文字列スライス型として追加していく
-            result.push_str(grapheme);
+            if grapheme == "/t" {
+                // タブを半角空白に変換
+                result.push(' ');
+            } else {
+                // 書記素一文字ずつを文字列スライス型として追加していく
+                result.push_str(grapheme);
+            }
         }
         result
     }
