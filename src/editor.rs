@@ -232,12 +232,20 @@ impl Editor {
             // ファイル名で20文字を超えていた分は表示しない
             file_name.truncate(20);
         }
-        // ファイル名 - ファイルの総行数
-        status = format!("{file_name} - {} lines", self.document.len());
-        // 行末の空いた箇所は半角空白で埋める
-        if width > status.len() {
-            status.push_str(&" ".repeat(width - status.len()));
+        // ファイル名
+        status = format!("{file_name}  ");
+        // カーソルのある行/総行数 (最初を1とする)
+        let line_indicator = format!(
+            "{}/{} lines",
+            self.cursor_position.y.saturating_add(1),
+            self.document.len()
+        );
+        // 左端のファイル名と右端の行数表示の間は半角空白で埋める
+        let len = status.len() + line_indicator.len();
+        if width > len {
+            status.push_str(&" ".repeat(width - len));
         }
+        status = format!("{status}{line_indicator}");
         // 画面に収まりきらない部分は削る
         status.truncate(width);
         // 背景色、文字色を設定
