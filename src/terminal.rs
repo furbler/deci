@@ -65,12 +65,18 @@ impl Terminal {
     pub fn clear_current_line() {
         print!("{}", termion::clear::CurrentLine);
     }
-    // 指定した色に設定
+    // 背景色を指定した色に設定
     pub fn set_bg_color(color: color::Rgb) {
         print!("{}", color::Bg(color));
     }
-    // デフォルトの色に設定
+    // 背景色をデフォルトの色に設定
     pub fn reset_bg_color() {
         print!("{}", color::Bg(color::Reset));
+    }
+    pub fn set_fg_color(color: color::Rgb) {
+        print!("{}", color::Fg(color));
+    }
+    pub fn reset_fg_color() {
+        print!("{}", color::Fg(color::Reset));
     }
 }

@@ -5,6 +5,9 @@ use std::env;
 use termion::color;
 use termion::event::Key;
 
+// 文字色
+const STATUS_FG_COLOR: color::Rgb = color::Rgb(13, 13, 13);
+// 背景色
 const STATUS_BG_COLOR: color::Rgb = color::Rgb(239, 239, 239);
 // コンパイル時にバージョン情報を取得
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -220,9 +223,29 @@ impl Editor {
         }
     }
     fn draw_status_bar(&self) {
-        let spaces = " ".repeat(self.terminal.size().width as usize);
+        let mut status;
+        let width = self.terminal.size().width as usize;
+        // ファイル名が指定されなかった場合のデフォルトの表示名
+        let mut file_name = "[No Name]".to_string();
+        if let Some(name) = &self.document.file_name {
+            file_name = name.clone();
+            // ファイル名で20文字を超えていた分は表示しない
+            file_name.truncate(20);
+        }
+        // ファイル名 - ファイルの総行数
+        status = format!("{file_name} - {} lines", self.document.len());
+        // 行末の空いた箇所は半角空白で埋める
+        if width > status.len() {
+            status.push_str(&" ".repeat(width - status.len()));
+        }
+        // 画面に収まりきらない部分は削る
+        status.truncate(width);
+        // 背景色、文字色を設定
         Terminal::set_bg_color(STATUS_BG_COLOR);
-        println!("{spaces}\r");
+        Terminal::set_fg_color(STATUS_FG_COLOR);
+        // ステータスバー上の文字を表示
+        println!("{status}\r");
+        Terminal::reset_fg_color();
         Terminal::reset_bg_color();
     }
     fn draw_message_bar(&self) {
