@@ -18,4 +18,7 @@ impl Row {
         // 指定範囲が文字列を外れていたら空文字列を返す
         self.string.get(start..end).unwrap_or_default().to_string()
     }
+    pub fn len(&self) -> usize {
+        self.string.len()
+    }
 }
