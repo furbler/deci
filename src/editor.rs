@@ -13,6 +13,8 @@ const STATUS_FG_COLOR: color::Rgb = color::Rgb(13, 13, 13);
 const STATUS_BG_COLOR: color::Rgb = color::Rgb(239, 239, 239);
 // コンパイル時にバージョン情報を取得
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+// 行頭の行番号の最大表示桁数4
+const LINE_NUMBER_DIGITS: usize = 4;
 
 #[derive(Default)]
 pub struct Position {
@@ -107,7 +109,7 @@ impl Editor {
                 0
             };
             Terminal::cursor_position(&Position {
-                x: char_pos,
+                x: (char_pos).saturating_add(LINE_NUMBER_DIGITS + 1),
                 y: self.cursor_position.y.saturating_sub(self.offset.y),
             });
         }
@@ -227,7 +229,8 @@ impl Editor {
         println!("{welcome_message}\r");
     }
     pub fn draw_row(&self, row: &Row) {
-        let half_width = self.terminal.size().width as usize;
+        let half_width =
+            (self.terminal.size().width as usize).saturating_sub(LINE_NUMBER_DIGITS + 1);
         let start = self.offset.x;
         let end = self.offset.x + half_width;
         // 表示する内容を指定した範囲で切り取る
@@ -240,10 +243,16 @@ impl Editor {
         let height = self.terminal.size().height;
         for terminal_row in 0..height - 1 {
             Terminal::clear_current_line();
+            // 表示する行番号が5桁以上の場合は下4桁だけ表示する
+            let line_number = (terminal_row + 1) % 10000;
             // 表示すべきファイルの行があれば表示する
             if let Some(row) = self.document.row(terminal_row as usize + self.offset.y) {
+                // 右揃え空白詰めで行番号表示
+                print!("{:>digits$} ", line_number, digits = LINE_NUMBER_DIGITS);
                 self.draw_row(row);
             } else if self.document.is_empty() && terminal_row == height / 3 {
+                // 右揃え空白詰めで行番号表示
+                print!("{:>digits$} ", line_number, digits = LINE_NUMBER_DIGITS);
                 // ドキュメントが空であれば、1/3の高さの行にウェルカムメッセージを表示する
                 self.draw_welcome_message();
             } else {
