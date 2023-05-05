@@ -227,9 +227,9 @@ impl Editor {
         println!("{welcome_message}\r");
     }
     pub fn draw_row(&self, row: &Row) {
-        let width = self.terminal.size().width as usize;
+        let half_width = self.terminal.size().width as usize;
         let start = self.offset.x;
-        let end = self.offset.x + width;
+        let end = self.offset.x + half_width;
         // 表示する内容を指定した範囲で切り取る
         // 文字列が画面より左側で終わっていたら空文字列が入る
         let row = row.render(start, end);
@@ -259,7 +259,7 @@ impl Editor {
         if let Some(name) = &self.document.file_name {
             file_name = name.clone();
             // ファイル名で20文字を超えていた分は表示しない
-            file_name.truncate(20);
+            file_name.truncate(60);
         }
         // ファイル名
         status = format!("{file_name}  ");

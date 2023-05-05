@@ -22,7 +22,7 @@ impl From<&str> for Row {
 impl Row {
     // 行から指定した範囲[start..end]のみを返す
     pub fn render(&self, start: usize, end: usize) -> String {
-        let end = cmp::min(end, self.string.len());
+        let end = cmp::min(end, self.len());
         let start = cmp::min(start, end);
 
         let mut result = String::new();
