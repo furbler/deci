@@ -1,5 +1,6 @@
 use std::cmp;
 use unicode_segmentation::UnicodeSegmentation;
+use unicode_width::UnicodeWidthStr;
 
 pub struct Row {
     string: String,
@@ -19,7 +20,7 @@ impl From<&str> for Row {
 }
 
 impl Row {
-    // 行から指定した範囲のみを返す
+    // 行から指定した範囲[start..end]のみを返す
     pub fn render(&self, start: usize, end: usize) -> String {
         let end = cmp::min(end, self.string.len());
         let start = cmp::min(start, end);
@@ -47,5 +48,10 @@ impl Row {
     // 複数バイト文字にも対応した文字数を返す
     fn update_len(&mut self) {
         self.len = self.string[..].graphemes(true).count();
+    }
+    // 指定した文字の箇所[start..end]の半角文字単位の位置を返す
+    pub fn char2pos(&self, start: usize, end: usize) -> usize {
+        let tmp = self.render(start, end);
+        UnicodeWidthStr::width(&tmp[..])
     }
 }

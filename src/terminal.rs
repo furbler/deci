@@ -5,7 +5,7 @@ use termion::event::Key;
 use termion::input::TermRead;
 use termion::raw::{IntoRawMode, RawTerminal};
 
-// 端末の縦横の文字数
+// 端末の縦横の半角文字単位のサイズ
 pub struct Size {
     pub width: u16,
     pub height: u16,

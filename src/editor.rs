@@ -101,8 +101,13 @@ impl Editor {
             self.draw_status_bar();
             self.draw_message_bar();
             // カーソルの画面上の位置を求めて、カーソルを表示する
+            let char_pos = if let Some(row) = self.document.row(self.cursor_position.y) {
+                row.char2pos(self.offset.x, self.cursor_position.x)
+            } else {
+                0
+            };
             Terminal::cursor_position(&Position {
-                x: self.cursor_position.x.saturating_sub(self.offset.x),
+                x: char_pos,
                 y: self.cursor_position.y.saturating_sub(self.offset.y),
             });
         }
