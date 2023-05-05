@@ -3,6 +3,7 @@ use unicode_segmentation::UnicodeSegmentation;
 
 pub struct Row {
     string: String,
+    // 全角文字にも対応した文字数
     len: usize,
 }
 // 文字列スライスからRowへの変換

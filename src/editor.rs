@@ -233,7 +233,7 @@ impl Editor {
     }
     fn draw_rows(&self) {
         let height = self.terminal.size().height;
-        for terminal_row in 0..height {
+        for terminal_row in 0..height - 1 {
             Terminal::clear_current_line();
             // 表示すべきファイルの行があれば表示する
             if let Some(row) = self.document.row(terminal_row as usize + self.offset.y) {
@@ -249,7 +249,6 @@ impl Editor {
     }
     fn draw_status_bar(&self) {
         let mut status;
-        let width = self.terminal.size().width as usize;
         // ファイル名が指定されなかった場合のデフォルトの表示名
         let mut file_name = "[No Name]".to_string();
         if let Some(name) = &self.document.file_name {
@@ -261,18 +260,29 @@ impl Editor {
         status = format!("{file_name}  ");
         // カーソルのある行/総行数 (最初を1とする)
         let line_indicator = format!(
-            "{}/{} lines",
+            "line: {}/{}  ",
             self.cursor_position.y.saturating_add(1),
             self.document.len()
         );
+        let char_width = if let Some(row) = self.document.row(self.cursor_position.y) {
+            row.len()
+        } else {
+            0
+        };
+        // カーソルの行頭からの文字数/総文字数
+        let column_indicator = format!(
+            "col: {}/{char_width}",
+            self.cursor_position.x.saturating_add(1),
+        );
         // 左端のファイル名と右端の行数表示の間は半角空白で埋める
-        let len = status.len() + line_indicator.len();
-        if width > len {
-            status.push_str(&" ".repeat(width - len));
+        let len = status.len() + line_indicator.len() + column_indicator.len();
+        let terminal_width = self.terminal.size().width as usize;
+        if terminal_width > len {
+            status.push_str(&" ".repeat(terminal_width - len));
         }
-        status = format!("{status}{line_indicator}");
+        status = format!("{status}{line_indicator}{column_indicator}");
         // 画面に収まりきらない部分は削る
-        status.truncate(width);
+        status.truncate(terminal_width);
         // 背景色、文字色を設定
         Terminal::set_bg_color(STATUS_BG_COLOR);
         Terminal::set_fg_color(STATUS_FG_COLOR);
