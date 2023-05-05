@@ -7,10 +7,12 @@ use std::time::Instant;
 use termion::color;
 use termion::event::Key;
 
-// 文字色
+// ステータスバー文字色
 const STATUS_FG_COLOR: color::Rgb = color::Rgb(13, 13, 13);
-// 背景色
+// ステータスバー背景色
 const STATUS_BG_COLOR: color::Rgb = color::Rgb(239, 239, 239);
+// 行番号背景色
+const LINE_NUMBER_BG_COLOR: color::Rgb = color::Rgb(53, 53, 53);
 // コンパイル時にバージョン情報を取得
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 // 行頭の行番号の最大表示桁数4
@@ -243,16 +245,13 @@ impl Editor {
         let height = self.terminal.size().height;
         for terminal_row in 0..height - 1 {
             Terminal::clear_current_line();
-            // 表示する行番号が5桁以上の場合は下4桁だけ表示する
-            let line_number = (terminal_row + 1) % 10000;
+            let line_number = terminal_row as usize + self.offset.y;
             // 表示すべきファイルの行があれば表示する
-            if let Some(row) = self.document.row(terminal_row as usize + self.offset.y) {
-                // 右揃え空白詰めで行番号表示
-                print!("{:>digits$} ", line_number, digits = LINE_NUMBER_DIGITS);
+            if let Some(row) = self.document.row(line_number) {
+                // 表示する行番号が5桁以上の場合は下4桁だけ表示する
+                draw_line_number((line_number + 1) % 10000);
                 self.draw_row(row);
             } else if self.document.is_empty() && terminal_row == height / 3 {
-                // 右揃え空白詰めで行番号表示
-                print!("{:>digits$} ", line_number, digits = LINE_NUMBER_DIGITS);
                 // ドキュメントが空であれば、1/3の高さの行にウェルカムメッセージを表示する
                 self.draw_welcome_message();
             } else {
@@ -317,6 +316,13 @@ impl Editor {
             print!("{text}");
         }
     }
+}
+
+// 右揃え空白詰めで行番号表示
+fn draw_line_number(line_number: usize) {
+    Terminal::set_bg_color(LINE_NUMBER_BG_COLOR);
+    print!("{:>digits$} ", line_number, digits = LINE_NUMBER_DIGITS);
+    Terminal::reset_bg_color();
 }
 
 fn die(e: &std::io::Error) {
