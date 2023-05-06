@@ -233,17 +233,14 @@ impl Editor {
     pub fn draw_row(&self, row: &Row) {
         let half_width =
             (self.terminal.size().width as usize).saturating_sub(LINE_NUMBER_DIGITS + 1);
-        let start = self.offset.x;
-        let end = self.offset.x + half_width;
         // 表示する内容を指定した範囲で切り取る
-        // 文字列が画面より左側で終わっていたら空文字列が入る
-        let row = row.render(start, end);
+        let row = row.clip_string(self.offset.x, half_width);
         // カーソルのある行を描画して改行する
         println!("{row}\r");
     }
     fn draw_rows(&self) {
         let height = self.terminal.size().height;
-        for terminal_row in 0..height - 1 {
+        for terminal_row in 0..height {
             Terminal::clear_current_line();
             let line_number = terminal_row as usize + self.offset.y;
             // 表示すべきファイルの行があれば表示する
@@ -321,7 +318,7 @@ impl Editor {
 // 右揃え空白詰めで行番号表示
 fn draw_line_number(line_number: usize) {
     Terminal::set_bg_color(LINE_NUMBER_BG_COLOR);
-    print!("{:>digits$} ", line_number, digits = LINE_NUMBER_DIGITS);
+    print!("{line_number:>LINE_NUMBER_DIGITS$} ");
     Terminal::reset_bg_color();
 }
 
