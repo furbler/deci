@@ -234,6 +234,7 @@ impl Editor {
         let half_width =
             (self.terminal.size().width as usize).saturating_sub(LINE_NUMBER_DIGITS + 1);
         // 表示する内容を指定した範囲で切り取る
+        // offsetは全角文字単位、terminal_widthは半角文字単位
         let row = row.clip_string(self.offset.x, half_width);
         // カーソルのある行を描画して改行する
         println!("{row}\r");

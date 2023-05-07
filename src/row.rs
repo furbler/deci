@@ -1,6 +1,6 @@
 use std::cmp;
 use unicode_segmentation::UnicodeSegmentation;
-use unicode_width::UnicodeWidthStr;
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 pub struct Row {
     string: String,
@@ -51,23 +51,32 @@ impl Row {
     }
     // 全角文字にも対応した、画面に収まる文字列を返す
     pub fn clip_string(&self, offset: usize, terminal_width: usize) -> String {
-        // 画面左端からの文字列
-        let left_clipped_string = self.string[..]
+        let mut current_width = 0;
+        let mut end_idx = 0;
+        // let mut char_idx = 0;
+        // 画面左側に映らない文字を削除
+        let string = self.string[..]
             .graphemes(true)
             .skip(offset)
             .collect::<String>();
-        // 文字列が画面に収まればそのまま表示
-        if UnicodeWidthStr::width(&left_clipped_string[..]) < terminal_width {
-            left_clipped_string
-        } else {
-            // 画面に収まらなければ、文字列がすべて2バイト文字であると仮定して切り取る
-            left_clipped_string[..]
-                .graphemes(true)
-                .take(terminal_width / 2)
-                .collect::<String>()
+
+        for c in string.chars() {
+            // 次の一文字の幅を取得
+            let char_width = UnicodeWidthChar::width(c).unwrap_or(1);
+            // 画面右端に到達したら
+            if current_width <= terminal_width && terminal_width <= current_width + char_width {
+                break;
+            }
+            current_width += char_width;
+            end_idx += 1;
         }
+        // 画面左端より左で行の文字列が終わっていた場合
+        if current_width <= offset {
+            return String::new();
+        }
+        string[..].graphemes(true).take(end_idx).collect::<String>()
     }
-    // 指定した文字の箇所[start..end]の半角文字単位の位置を返す
+    // 指定した範囲[start..end] (全角文字単位)の文字列を半角文字単位で何個分かを返す
     pub fn char2pos(&self, start: usize, end: usize) -> usize {
         let string = self.render(start, end);
         UnicodeWidthStr::width(&string[..])
