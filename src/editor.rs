@@ -15,8 +15,8 @@ const STATUS_BG_COLOR: color::Rgb = color::Rgb(239, 239, 239);
 const LINE_NUMBER_BG_COLOR: color::Rgb = color::Rgb(53, 53, 53);
 // コンパイル時にバージョン情報を取得
 const VERSION: &str = env!("CARGO_PKG_VERSION");
-// 行頭の行番号の最大表示桁数4
-const LINE_NUMBER_DIGITS: usize = 4;
+// 行頭の行番号の最大表示桁数 4桁+半角スペース1桁
+const LINE_NUMBER_SPACES: usize = 5;
 
 #[derive(Default)]
 pub struct Position {
@@ -106,12 +106,12 @@ impl Editor {
             self.draw_message_bar();
             // カーソルの画面上の位置を求めて、カーソルを表示する
             let char_pos = if let Some(row) = self.document.row(self.cursor_position.y) {
-                row.char2pos(self.offset.x, self.cursor_position.x)
+                row.full2half_width(self.offset.x, self.cursor_position.x)
             } else {
                 0
             };
             Terminal::cursor_position(&Position {
-                x: (char_pos).saturating_add(LINE_NUMBER_DIGITS + 1),
+                x: (char_pos).saturating_add(LINE_NUMBER_SPACES),
                 y: self.cursor_position.y.saturating_sub(self.offset.y),
             });
         }
@@ -128,27 +128,34 @@ impl Editor {
         self.scroll();
         Ok(())
     }
+    // カーソルが画面の外側に外れたら画面をスクロールさせる
     fn scroll(&mut self) {
         // キー入力による移動後のカーソル位置を取得
         let Position { x, y } = self.cursor_position;
-        let width = self.terminal.size().width as usize;
-        let height = self.terminal.size().height as usize;
+        let terminal_width = self.terminal.size().width as usize;
+        let terminal_height = self.terminal.size().height as usize;
         let mut offset = &mut self.offset;
         // カーソルが画面より上
         if y < offset.y {
             // カーソルを画面の一番上に置く
             offset.y = y;
-        } else if y >= offset.y.saturating_add(height) {
+        } else if y >= offset.y.saturating_add(terminal_height) {
             // カーソルが画面より下の時はカーソルを画面の一番下に置く
-            offset.y = y.saturating_sub(height).saturating_add(1);
+            offset.y = y.saturating_sub(terminal_height).saturating_add(1);
         }
-        // カーソルが画面より左
-        if x < offset.x {
-            // カーソルを画面の一番左に置く
-            offset.x = x;
-        } else if x >= offset.x.saturating_add(width) {
-            // カーソルが画面より右の時はカーソルを画面の一番右に置く
-            offset.x = x.saturating_sub(width).saturating_add(1);
+
+        if let Some(row) = self.document.row(y) {
+            // 半角単位でのカーソル位置と画面のオフセットを取得
+            let half_cursor_x = row.full2half_width(0, x);
+            let half_offset_x = row.full2half_width(0, offset.x);
+            // カーソルが画面より左
+            if x < offset.x {
+                // カーソルを画面の一番左に置く
+                offset.x = x;
+            } else if half_offset_x.saturating_add(terminal_width) <= half_cursor_x {
+                // カーソルが画面右端より右にある時はカーソルを画面の一番右に置く
+                offset.x = row.half2full_width(half_cursor_x.saturating_sub(terminal_width));
+            }
         }
     }
     // 入力したキーに応じてカーソル移動
@@ -231,8 +238,7 @@ impl Editor {
         println!("{welcome_message}\r");
     }
     pub fn draw_row(&self, row: &Row) {
-        let half_width =
-            (self.terminal.size().width as usize).saturating_sub(LINE_NUMBER_DIGITS + 1);
+        let half_width = self.terminal.size().width as usize;
         // 表示する内容を指定した範囲で切り取る
         // offsetは全角文字単位、terminal_widthは半角文字単位
         let row = row.clip_string(self.offset.x, half_width);
@@ -319,7 +325,11 @@ impl Editor {
 // 右揃え空白詰めで行番号表示
 fn draw_line_number(line_number: usize) {
     Terminal::set_bg_color(LINE_NUMBER_BG_COLOR);
-    print!("{line_number:>LINE_NUMBER_DIGITS$} ");
+    // 行番号表示の後に半角スペースを1つ入れる
+    print!(
+        "{line_number:>digits_width$} ",
+        digits_width = LINE_NUMBER_SPACES - 1
+    );
     Terminal::reset_bg_color();
 }
 

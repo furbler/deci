@@ -50,35 +50,39 @@ impl Row {
         self.len = self.string[..].graphemes(true).count();
     }
     // 全角文字にも対応した、画面に収まる文字列を返す
-    pub fn clip_string(&self, offset: usize, terminal_width: usize) -> String {
+    pub fn clip_string(&self, full_width_offset: usize, half_width_area: usize) -> String {
         let mut current_width = 0;
         let mut end_idx = 0;
-        // let mut char_idx = 0;
         // 画面左側に映らない文字を削除
         let string = self.string[..]
             .graphemes(true)
-            .skip(offset)
+            .skip(full_width_offset)
             .collect::<String>();
 
+        // 画面左端より左で行の文字列が終わっていた場合
+        if string.is_empty() {
+            return String::new();
+        }
         for c in string.chars() {
             // 次の一文字の幅を取得
             let char_width = UnicodeWidthChar::width(c).unwrap_or(1);
             // 画面右端に到達したら
-            if current_width <= terminal_width && terminal_width <= current_width + char_width {
+            if current_width <= half_width_area && half_width_area <= current_width + char_width {
                 break;
             }
             current_width += char_width;
             end_idx += 1;
         }
-        // 画面左端より左で行の文字列が終わっていた場合
-        if current_width <= offset {
-            return String::new();
-        }
         string[..].graphemes(true).take(end_idx).collect::<String>()
     }
     // 指定した範囲[start..end] (全角文字単位)の文字列を半角文字単位で何個分かを返す
-    pub fn char2pos(&self, start: usize, end: usize) -> usize {
-        let string = self.render(start, end);
+    pub fn full2half_width(&self, full_width_start: usize, full_width_end: usize) -> usize {
+        let string = self.render(full_width_start, full_width_end);
+        UnicodeWidthStr::width(&string[..])
+    }
+    // 指定した範囲[..end] (半角文字単位)の文字列を全角文字単位で何個分かを返す
+    pub fn half2full_width(&self, half_width_end: usize) -> usize {
+        let string = self.clip_string(0, half_width_end);
         UnicodeWidthStr::width(&string[..])
     }
 }

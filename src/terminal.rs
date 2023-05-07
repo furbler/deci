@@ -5,12 +5,17 @@ use termion::event::Key;
 use termion::input::TermRead;
 use termion::raw::{IntoRawMode, RawTerminal};
 
+// 行頭の行番号の最大表示桁数 4桁+半角スペース1桁
+const LINE_NUMBER_SPACES: usize = 5;
+
 // 端末の縦横の半角文字単位のサイズ
 pub struct Size {
     pub width: u16,
     pub height: u16,
 }
 pub struct Terminal {
+    // 端末の縦横の半角文字単位のサイズ
+    // 幅は端末の画面幅から行番号の表示スペースを除いたサイズ
     size: Size,
     _stdout: RawTerminal<std::io::Stdout>,
 }
@@ -18,9 +23,10 @@ pub struct Terminal {
 impl Terminal {
     pub fn default() -> Result<Self, std::io::Error> {
         let size = termion::terminal_size()?;
+        #[allow(clippy::cast_possible_truncation)]
         Ok(Self {
             size: Size {
-                width: size.0,
+                width: size.0 - LINE_NUMBER_SPACES as u16,
                 // 2行分空ける
                 height: size.1.saturating_sub(2),
             },
