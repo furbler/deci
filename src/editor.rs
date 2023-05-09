@@ -172,8 +172,12 @@ impl Editor {
             0
         };
         match key {
-            // 挿入モード時に任意の文字が入力されたらその文字を挿入する
-            Key::Char(c) if !self.vim_normal_mode => self.document.insert(&self.cursor_position, c),
+            // 挿入モード時に任意の文字が入力されたとき
+            Key::Char(c) if !self.vim_normal_mode => {
+                // その文字を挿入してからカーソルを右に移動
+                self.document.insert(&self.cursor_position, c);
+                self.move_cursor(Key::Right);
+            }
             // ノーマルモード時にiを入力したら挿入モードに移行
             Key::Char('i') if self.vim_normal_mode => self.vim_normal_mode = false,
             // ノーマルモードに移行
