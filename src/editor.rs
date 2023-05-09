@@ -39,6 +39,8 @@ impl StatusMessage {
 
 pub struct Editor {
     should_quit: bool,
+    // trueはノーマルモード、falseはインサートモード
+    vim_normal_mode: bool,
     terminal: Terminal,
     cursor_position: Position,
     // 開いているドキュメントの先頭に対する画面左上の位置
@@ -85,6 +87,7 @@ impl Editor {
         };
         Self {
             should_quit: false,
+            vim_normal_mode: true,
             terminal: Terminal::default().expect("Failed to initialize terminal"),
             cursor_position: Position::default(),
             document,
@@ -169,6 +172,12 @@ impl Editor {
             0
         };
         match key {
+            // 挿入モード時に任意の文字が入力されたらその文字を挿入する
+            Key::Char(c) if !self.vim_normal_mode => self.document.insert(&self.cursor_position, c),
+            // ノーマルモード時にiを入力したら挿入モードに移行
+            Key::Char('i') if self.vim_normal_mode => self.vim_normal_mode = false,
+            // ノーマルモードに移行
+            Key::Esc => self.vim_normal_mode = true,
             Key::Up | Key::Char('k') => y = y.saturating_sub(1),
             Key::Down | Key::Char('j') => {
                 if y < document_height {

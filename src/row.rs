@@ -2,17 +2,18 @@ use std::cmp;
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
+#[derive(Default)]
 pub struct Row {
     string: String,
     // 全角文字にも対応した行の文字数
-    len: usize,
+    len_full_width: usize,
 }
 // 文字列スライスからRowへの変換
 impl From<&str> for Row {
     fn from(slice: &str) -> Self {
         let mut row = Self {
             string: String::from(slice),
-            len: 0,
+            len_full_width: 0,
         };
         row.update_len();
         row
@@ -43,12 +44,30 @@ impl Row {
         result
     }
     pub fn len(&self) -> usize {
-        self.len
+        self.len_full_width
     }
     // 全角文字にも対応した行の文字数を返す
     fn update_len(&mut self) {
-        self.len = self.string[..].graphemes(true).count();
+        self.len_full_width = self.string[..].graphemes(true).count();
     }
+    // 指定した位置の後ろに1文字挿入する
+    pub fn insert(&mut self, at: usize, c: char) {
+        // 挿入位置が文字列の最後のとき
+        if at >= self.len() {
+            self.string.push(c);
+        } else {
+            // 挿入位置より前の文字列
+            let mut result: String = self.string[..].graphemes(true).take(at).collect();
+            // 挿入位置より後の文字列
+            let remainder: String = self.string[..].graphemes(true).skip(at).collect();
+            result.push(c);
+            result.push_str(&remainder);
+            self.string = result;
+        }
+        // 文字列数を更新
+        self.update_len();
+    }
+
     // 全角文字にも対応した、画面に収まる文字列を返す
     pub fn clip_string(&self, full_width_offset: usize, half_width_area: usize) -> String {
         let mut current_width = 0;

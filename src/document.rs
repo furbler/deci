@@ -1,3 +1,4 @@
+use crate::Position;
 use crate::Row;
 use std::fs;
 
@@ -32,5 +33,18 @@ impl Document {
     // ドキュメントの総行数を返す
     pub fn len(&self) -> usize {
         self.rows.len()
+    }
+    // 指定した位置の後ろに1文字挿入
+    pub fn insert(&mut self, at: &Position, c: char) {
+        if at.y < self.len() {
+            // 指定された位置の後ろに文字を挿入
+            let row = self.rows.get_mut(at.y).unwrap();
+            row.insert(at.x, c);
+        } else {
+            // ドキュメント末尾に入力された文字を含んだ新しい行を追加
+            let mut row = Row::default();
+            row.insert(0, c);
+            self.rows.push(row);
+        }
     }
 }
