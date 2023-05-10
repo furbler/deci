@@ -56,15 +56,31 @@ impl Row {
         if at >= self.len() {
             self.string.push(c);
         } else {
-            // 挿入位置より前の文字列
+            // 挿入位置より前の文字列(atを含まない)
             let mut result: String = self.string[..].graphemes(true).take(at).collect();
-            // 挿入位置より後の文字列
+            // 挿入位置より後の文字列(atを含む)
             let remainder: String = self.string[..].graphemes(true).skip(at).collect();
             result.push(c);
             result.push_str(&remainder);
             self.string = result;
         }
         // 文字列数を更新
+        self.update_len();
+    }
+    pub fn delete(&mut self, at: usize) {
+        // カーソルが行の最後にある時
+        if at >= self.len() {
+            // 何もしない
+            return;
+        }
+        // atまで(atを含まない)の文字列
+        let mut result: String = self.string[..].graphemes(true).take(at).collect();
+        // atより後の文字列(atを含まない)
+        let remainder: String = self.string[..].graphemes(true).skip(at + 1).collect();
+        // 結合
+        result.push_str(&remainder);
+        self.string = result;
+        // 長さを更新
         self.update_len();
     }
 

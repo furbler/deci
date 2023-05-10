@@ -182,6 +182,10 @@ impl Editor {
             Key::Char('i') if self.vim_normal_mode => self.vim_normal_mode = false,
             // ノーマルモードに移行
             Key::Esc => self.vim_normal_mode = true,
+            // ノーマルモード時にxを押したらカーソル位置の文字を削除
+            Key::Delete | Key::Char('x') if self.vim_normal_mode => {
+                self.document.delete(&self.cursor_position);
+            }
             Key::Up | Key::Char('k') => y = y.saturating_sub(1),
             Key::Down | Key::Char('j') => {
                 if y < document_height {

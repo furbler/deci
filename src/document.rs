@@ -47,4 +47,13 @@ impl Document {
             self.rows.push(row);
         }
     }
+    pub fn delete(&mut self, at: &Position) {
+        // カーソルが行の最後にある時
+        if at.y >= self.len() {
+            // 何もしない
+            return;
+        }
+        let row = self.rows.get_mut(at.y).unwrap();
+        row.delete(at.x);
+    }
 }
