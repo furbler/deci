@@ -126,40 +126,37 @@ impl Editor {
         let pressed_key = Terminal::read_key()?;
         match pressed_key {
             Key::Ctrl('q') => self.should_quit = true,
+            // 挿入モード時に任意の文字が入力されたとき
+            Key::Char(c) if !self.vim_normal_mode => {
+                // その文字を挿入してからカーソルを右に移動
+                self.document.insert(&self.cursor_position, c);
+                self.move_cursor(Key::Right);
+            }
+            // ノーマルモード時にiを入力したら挿入モードに移行
+            Key::Char('i') if self.vim_normal_mode => self.vim_normal_mode = false,
+            // ノーマルモードに移行
+            Key::Esc => self.vim_normal_mode = true,
+            // Deleteキー、またはノーマルモード時にxを押したらカーソル位置の文字を削除
+            //  挿入モードでxを押した時は、上のアームでマッチするのでここはマッチしない
+            Key::Delete | Key::Char('x') => {
+                self.document.delete(&self.cursor_position);
+            }
+            Key::Backspace => {
+                // カーソルがドキュメントの先頭でなければ
+                if self.cursor_position.x > 0 || self.cursor_position.y > 0 {
+                    // カーソルを一つ前に移動
+                    self.move_cursor(Key::Left);
+                    // 挿入モードの時のみ
+                    if !self.vim_normal_mode {
+                        // 文字を削除
+                        self.document.delete(&self.cursor_position);
+                    }
+                }
+            }
             _ => self.move_cursor(pressed_key),
         }
         self.scroll();
         Ok(())
-    }
-    // カーソルが画面の外側に外れたら画面をスクロールさせる
-    fn scroll(&mut self) {
-        // キー入力による移動後のカーソル位置を取得
-        let Position { x, y } = self.cursor_position;
-        let terminal_width = self.terminal.size().width as usize;
-        let terminal_height = self.terminal.size().height as usize;
-        let mut offset = &mut self.offset;
-        // カーソルが画面より上
-        if y < offset.y {
-            // カーソルを画面の一番上に置く
-            offset.y = y;
-        } else if y >= offset.y.saturating_add(terminal_height) {
-            // カーソルが画面より下の時はカーソルを画面の一番下に置く
-            offset.y = y.saturating_sub(terminal_height).saturating_add(1);
-        }
-
-        if let Some(row) = self.document.row(y) {
-            // 半角単位でのカーソル位置と画面のオフセットを取得
-            let half_cursor_x = row.full2half_width(0, x);
-            let half_offset_x = row.full2half_width(0, offset.x);
-            // カーソルが画面より左
-            if x < offset.x {
-                // カーソルを画面の一番左に置く
-                offset.x = x;
-            } else if half_offset_x.saturating_add(terminal_width) <= half_cursor_x {
-                // カーソルが画面右端より右にある時はカーソルを画面の一番右に置く
-                offset.x = row.half2full_width(half_cursor_x.saturating_sub(terminal_width));
-            }
-        }
     }
     // 入力したキーに応じてカーソル移動
     fn move_cursor(&mut self, key: Key) {
@@ -172,20 +169,6 @@ impl Editor {
             0
         };
         match key {
-            // 挿入モード時に任意の文字が入力されたとき
-            Key::Char(c) if !self.vim_normal_mode => {
-                // その文字を挿入してからカーソルを右に移動
-                self.document.insert(&self.cursor_position, c);
-                self.move_cursor(Key::Right);
-            }
-            // ノーマルモード時にiを入力したら挿入モードに移行
-            Key::Char('i') if self.vim_normal_mode => self.vim_normal_mode = false,
-            // ノーマルモードに移行
-            Key::Esc => self.vim_normal_mode = true,
-            // ノーマルモード時にxを押したらカーソル位置の文字を削除
-            Key::Delete | Key::Char('x') if self.vim_normal_mode => {
-                self.document.delete(&self.cursor_position);
-            }
             Key::Up | Key::Char('k') => y = y.saturating_sub(1),
             Key::Down | Key::Char('j') => {
                 if y < document_height {
@@ -239,6 +222,36 @@ impl Editor {
             _ => (),
         }
         self.cursor_position = Position { x, y }
+    }
+    // カーソルが画面の外側に外れたら画面をスクロールさせる
+    fn scroll(&mut self) {
+        // キー入力による移動後のカーソル位置を取得
+        let Position { x, y } = self.cursor_position;
+        let terminal_width = self.terminal.size().width as usize;
+        let terminal_height = self.terminal.size().height as usize;
+        let mut offset = &mut self.offset;
+        // カーソルが画面より上
+        if y < offset.y {
+            // カーソルを画面の一番上に置く
+            offset.y = y;
+        } else if y >= offset.y.saturating_add(terminal_height) {
+            // カーソルが画面より下の時はカーソルを画面の一番下に置く
+            offset.y = y.saturating_sub(terminal_height).saturating_add(1);
+        }
+
+        if let Some(row) = self.document.row(y) {
+            // 半角単位でのカーソル位置と画面のオフセットを取得
+            let half_cursor_x = row.full2half_width(0, x);
+            let half_offset_x = row.full2half_width(0, offset.x);
+            // カーソルが画面より左
+            if x < offset.x {
+                // カーソルを画面の一番左に置く
+                offset.x = x;
+            } else if half_offset_x.saturating_add(terminal_width) <= half_cursor_x {
+                // カーソルが画面右端より右にある時はカーソルを画面の一番右に置く
+                offset.x = row.half2full_width(half_cursor_x.saturating_sub(terminal_width));
+            }
+        }
     }
     fn draw_welcome_message(&self) {
         // バージョン情報を含めたメッセージ
