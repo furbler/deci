@@ -48,12 +48,23 @@ impl Document {
         }
     }
     pub fn delete(&mut self, at: &Position) {
-        // カーソルが行の最後にある時
-        if at.y >= self.len() {
+        let len = self.len();
+        // 指定位置がドキュメントからはみ出している時
+        if at.y >= len {
             // 何もしない
             return;
         }
-        let row = self.rows.get_mut(at.y).unwrap();
-        row.delete(at.x);
+        // 指定位置が行の末尾にあり、かつ次の行が存在した時
+        if at.x == self.rows.get_mut(at.y).unwrap().len() && at.y < len - 1 {
+            // 指定位置の次の行を削除
+            let next_row = self.rows.remove(at.y + 1);
+            // 指定位置の行
+            let row = self.rows.get_mut(at.y).unwrap();
+            // 結合
+            row.append(&next_row);
+        } else {
+            let row = self.rows.get_mut(at.y).unwrap();
+            row.delete(at.x);
+        }
     }
 }

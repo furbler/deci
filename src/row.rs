@@ -83,6 +83,11 @@ impl Row {
         // 長さを更新
         self.update_len();
     }
+    // 自身の後ろに指定された行を結合する
+    pub fn append(&mut self, new: &Self) {
+        self.string = format!("{}{}", self.string, new.string);
+        self.update_len();
+    }
 
     // 全角文字にも対応した、画面に収まる文字列を返す
     pub fn clip_string(&self, full_width_offset: usize, half_width_area: usize) -> String {
