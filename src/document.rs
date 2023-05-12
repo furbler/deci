@@ -34,8 +34,28 @@ impl Document {
     pub fn len(&self) -> usize {
         self.rows.len()
     }
+    // 空行を挿入
+    fn insert_newline(&mut self, at: &Position) {
+        if at.y > self.len() {
+            return;
+        }
+        // 空行を作成
+        let new_row = Row::default();
+        // 指定位置がドキュメントの最後の行の場合
+        if at.y == self.len() || at.y.saturating_add(1) == self.len() {
+            self.rows.push(new_row);
+        } else {
+            self.rows.insert(at.y + 1, new_row);
+        }
+    }
     // 指定した位置の後ろに1文字挿入
     pub fn insert(&mut self, at: &Position, c: char) {
+        // Enterキーが押された時
+        if c == '\n' {
+            // 指定位置の下に空行を挿入
+            self.insert_newline(at);
+            return;
+        }
         if at.y < self.len() {
             // 指定された位置の後ろに文字を挿入
             let row = self.rows.get_mut(at.y).unwrap();

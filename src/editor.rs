@@ -126,10 +126,17 @@ impl Editor {
         let pressed_key = Terminal::read_key()?;
         match pressed_key {
             Key::Ctrl('q') => self.should_quit = true,
+            // Enterキーが押されたとき
+            Key::Char('\n') => {
+                self.document.insert(&self.cursor_position, '\n');
+                // カーソルを下に移動
+                self.move_cursor(Key::Down);
+            }
             // 挿入モード時に任意の文字が入力されたとき
             Key::Char(c) if !self.vim_normal_mode => {
-                // その文字を挿入してからカーソルを右に移動
+                // その文字を挿入してからカーソルを移動
                 self.document.insert(&self.cursor_position, c);
+                // カーソルを右に移動
                 self.move_cursor(Key::Right);
             }
             // ノーマルモード時にiを入力したら挿入モードに移行
