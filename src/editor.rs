@@ -126,6 +126,17 @@ impl Editor {
         let pressed_key = Terminal::read_key()?;
         match pressed_key {
             Key::Ctrl('q') => self.should_quit = true,
+            // ファイルに保存
+            Key::Ctrl('s') => {
+                if self.document.save().is_ok() {
+                    // 成功
+                    self.status_message =
+                        StatusMessage::from("File saved successfully.".to_string());
+                } else {
+                    // 失敗
+                    self.status_message = StatusMessage::from("Error writing file!".to_string());
+                }
+            }
             // Enterキーが押されたとき
             Key::Char('\n') => {
                 self.document.insert(&self.cursor_position, '\n');

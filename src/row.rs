@@ -98,6 +98,9 @@ impl Row {
         // 分割後後半の行をrow型で返す
         Self::from(&remainder[..])
     }
+    pub fn as_bytes(&self) -> &[u8] {
+        self.string.as_bytes()
+    }
     // 全角文字にも対応した、画面に収まる文字列を返す
     pub fn clip_string(&self, full_width_offset: usize, half_width_area: usize) -> String {
         let mut current_width = 0;
