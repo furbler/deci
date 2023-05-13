@@ -128,6 +128,11 @@ impl Editor {
             Key::Ctrl('q') => self.should_quit = true,
             // ファイルに保存
             Key::Ctrl('s') => {
+                // ファイル名が指定されていなければ
+                if self.document.file_name.is_none() {
+                    // 入力を促す
+                    self.document.file_name = Some(self.prompt("Save as: ")?);
+                }
                 if self.document.save().is_ok() {
                     // 成功
                     self.status_message =
@@ -367,6 +372,29 @@ impl Editor {
             text.truncate(self.terminal.size().width as usize);
             print!("{text}");
         }
+    }
+    fn prompt(&mut self, prompt: &str) -> Result<String, std::io::Error> {
+        let mut result = String::new();
+        loop {
+            // プロンプト表示
+            self.status_message = StatusMessage::from(format!("{prompt}{result}"));
+            self.refresh_screen()?;
+            // 1文字ずつ読み込む
+            if let Key::Char(c) = Terminal::read_key()? {
+                // 改行が入力されたら終了
+                if c == '\n' {
+                    // ステータスメッセージを初期化
+                    self.status_message = StatusMessage::from(String::new());
+                    break;
+                }
+                // 入力文字が制御文字でなければ追加
+                if !c.is_control() {
+                    result.push(c);
+                }
+            }
+        }
+        // 入力された文字列を返す
+        Ok(result)
     }
 }
 
