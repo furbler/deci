@@ -88,7 +88,16 @@ impl Row {
         self.string = format!("{}{}", self.string, new.string);
         self.update_len();
     }
-
+    // 指定位置で行を分割し、後半の行を返す
+    pub fn split(&mut self, at: usize) -> Self {
+        let beginning: String = self.string[..].graphemes(true).take(at).collect();
+        let remainder: String = self.string[..].graphemes(true).skip(at).collect();
+        self.string = beginning;
+        // 自身の長さを更新
+        self.update_len();
+        // 分割後後半の行をrow型で返す
+        Self::from(&remainder[..])
+    }
     // 全角文字にも対応した、画面に収まる文字列を返す
     pub fn clip_string(&self, full_width_offset: usize, half_width_area: usize) -> String {
         let mut current_width = 0;

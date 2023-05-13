@@ -34,17 +34,18 @@ impl Document {
     pub fn len(&self) -> usize {
         self.rows.len()
     }
-    // 空行を挿入
+    // ドキュメントに行を挿入
     fn insert_newline(&mut self, at: &Position) {
         if at.y > self.len() {
             return;
         }
-        // 空行を作成
-        let new_row = Row::default();
-        // 指定位置がドキュメントの最後の行の場合
-        if at.y == self.len() || at.y.saturating_add(1) == self.len() {
-            self.rows.push(new_row);
+        // 指定位置がドキュメントの最後行の次の場合
+        if at.y == self.len() {
+            self.rows.push(Row::default());
         } else {
+            // atで行を分割(atは後半の行に含まれる)
+            let new_row = self.rows.get_mut(at.y).unwrap().split(at.x);
+            // 後半行を挿入
             self.rows.insert(at.y + 1, new_row);
         }
     }
