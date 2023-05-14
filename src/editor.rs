@@ -6,6 +6,7 @@ use std::time::Duration;
 use std::time::Instant;
 use termion::color;
 use termion::event::Key;
+use unicode_segmentation::UnicodeSegmentation;
 
 // ステータスバー文字色
 const STATUS_FG_COLOR: color::Rgb = color::Rgb(13, 13, 13);
@@ -122,26 +123,35 @@ impl Editor {
         // バッファの内容を出力
         Terminal::flush()
     }
+    // ファイルに保存
+    fn save(&mut self) {
+        // エディタ起動時にファイル名が指定されてい場合
+        if self.document.file_name.is_none() {
+            // ファイル名入力を促す
+            let new_name = self.prompt("Save as: ").unwrap_or(None);
+            // ファイル名が指定されていなければ
+            if new_name.is_none() {
+                // メッセージを表示
+                self.status_message = StatusMessage::from("Save aborted.".to_string());
+                // 何もしない
+                return;
+            }
+            self.document.file_name = new_name;
+        }
+
+        if self.document.save().is_ok() {
+            // 成功
+            self.status_message = StatusMessage::from("File saved successfully.".to_string());
+        } else {
+            // 失敗
+            self.status_message = StatusMessage::from("Error writing file!".to_string());
+        }
+    }
     fn process_keypress(&mut self) -> Result<(), std::io::Error> {
         let pressed_key = Terminal::read_key()?;
         match pressed_key {
             Key::Ctrl('q') => self.should_quit = true,
-            // ファイルに保存
-            Key::Ctrl('s') => {
-                // ファイル名が指定されていなければ
-                if self.document.file_name.is_none() {
-                    // 入力を促す
-                    self.document.file_name = Some(self.prompt("Save as: ")?);
-                }
-                if self.document.save().is_ok() {
-                    // 成功
-                    self.status_message =
-                        StatusMessage::from("File saved successfully.".to_string());
-                } else {
-                    // 失敗
-                    self.status_message = StatusMessage::from("Error writing file!".to_string());
-                }
-            }
+            Key::Ctrl('s') => self.save(),
             // Enterキーが押されたとき
             Key::Char('\n') => {
                 self.document.insert(&self.cursor_position, '\n');
@@ -373,28 +383,48 @@ impl Editor {
             print!("{text}");
         }
     }
-    fn prompt(&mut self, prompt: &str) -> Result<String, std::io::Error> {
+    fn prompt(&mut self, prompt: &str) -> Result<Option<String>, std::io::Error> {
         let mut result = String::new();
         loop {
             // プロンプト表示
             self.status_message = StatusMessage::from(format!("{prompt}{result}"));
             self.refresh_screen()?;
+
             // 1文字ずつ読み込む
-            if let Key::Char(c) = Terminal::read_key()? {
-                // 改行が入力されたら終了
-                if c == '\n' {
-                    // ステータスメッセージを初期化
-                    self.status_message = StatusMessage::from(String::new());
+            match Terminal::read_key()? {
+                Key::Backspace => {
+                    // 入力済み文字列があれば
+                    if !result.is_empty() {
+                        // 最後の1文字を削除
+                        result = result[..]
+                            .graphemes(true)
+                            .take(result[..].graphemes(true).count() - 1)
+                            .collect();
+                    }
+                }
+                // 改行が入力されたら入力終了
+                Key::Char('\n') => break,
+                Key::Char(c) => {
+                    // 入力文字が制御文字でなければ追加
+                    if !c.is_control() {
+                        result.push(c);
+                    }
+                }
+                Key::Esc => {
+                    // それまでの入力内容を破棄して終了
+                    result = String::new();
                     break;
                 }
-                // 入力文字が制御文字でなければ追加
-                if !c.is_control() {
-                    result.push(c);
-                }
+                _ => (),
             }
         }
+        // ステータスメッセージを初期化
+        self.status_message = StatusMessage::from(String::new());
+        if result.is_empty() {
+            return Ok(None);
+        }
         // 入力された文字列を返す
-        Ok(result)
+        Ok(Some(result))
     }
 }
 
