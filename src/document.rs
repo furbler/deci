@@ -8,6 +8,8 @@ use std::io::Write;
 pub struct Document {
     rows: Vec<Row>,
     pub file_name: Option<String>,
+    // ローカルのファイルに対し更新があればtrue、無ければfalse
+    dirty: bool,
 }
 
 impl Document {
@@ -23,6 +25,7 @@ impl Document {
         Ok(Self {
             rows,
             file_name: Some(filename.to_string()),
+            dirty: false,
         })
     }
     // 指定された行が存在すればその行をSomeで包んで、なければNoneを返す
@@ -38,9 +41,6 @@ impl Document {
     }
     // ドキュメントに行を挿入
     fn insert_newline(&mut self, at: &Position) {
-        if at.y > self.len() {
-            return;
-        }
         // 指定位置がドキュメントの最後行の次の場合
         if at.y == self.len() {
             self.rows.push(Row::default());
@@ -53,6 +53,11 @@ impl Document {
     }
     // 指定した位置の後ろに1文字挿入
     pub fn insert(&mut self, at: &Position, c: char) {
+        if at.y > self.len() {
+            return;
+        }
+        // 更新フラグを立てる
+        self.dirty = true;
         // Enterキーが押された時
         if c == '\n' {
             // 指定位置の下に空行を挿入
@@ -77,6 +82,8 @@ impl Document {
             // 何もしない
             return;
         }
+        // 更新フラグを立てる
+        self.dirty = true;
         // 指定位置が行の末尾にあり、かつ次の行が存在した時
         if at.x == self.rows.get_mut(at.y).unwrap().len() && at.y < len - 1 {
             // 指定位置の次の行を削除
@@ -91,7 +98,7 @@ impl Document {
         }
     }
     // 上書き保存
-    pub fn save(&self) -> Result<(), Error> {
+    pub fn save(&mut self) -> Result<(), Error> {
         if let Some(file_name) = &self.file_name {
             let mut file = fs::File::create(file_name)?;
             // 一行ずつ保存
@@ -99,7 +106,12 @@ impl Document {
                 file.write_all(row.as_bytes())?;
                 file.write_all(b"\n")?;
             }
+            // 更新フラグを下ろす
+            self.dirty = false;
         }
         Ok(())
+    }
+    pub fn is_dirty(&self) -> bool {
+        self.dirty
     }
 }

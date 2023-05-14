@@ -329,6 +329,12 @@ impl Editor {
     }
     fn draw_status_bar(&self) {
         let mut status;
+        // 更新されていた場合
+        let modified_indicator = if self.document.is_dirty() {
+            " (modified)"
+        } else {
+            ""
+        };
         // ファイル名が指定されなかった場合のデフォルトの表示名
         let mut file_name = "[No Name]".to_string();
         if let Some(name) = &self.document.file_name {
@@ -354,13 +360,15 @@ impl Editor {
             "col: {}/{char_width}",
             self.cursor_position.x.saturating_add(1),
         );
+        let show_len =
+            status.len() + line_indicator.len() + column_indicator.len() + modified_indicator.len();
+        // 行番号表示スペースも考慮する
+        let terminal_width = self.terminal.size().width as usize + LINE_NUMBER_SPACES;
         // 左端のファイル名と右端の行数表示の間は半角空白で埋める
-        let len = status.len() + line_indicator.len() + column_indicator.len();
-        let terminal_width = self.terminal.size().width as usize;
-        if terminal_width > len {
-            status.push_str(&" ".repeat(terminal_width - len));
+        if show_len < terminal_width {
+            status.push_str(&" ".repeat(terminal_width - show_len));
         }
-        status = format!("{status}{line_indicator}{column_indicator}");
+        status = format!("{status}{line_indicator}{column_indicator}{modified_indicator}");
         // 画面に収まりきらない部分は削る
         status.truncate(terminal_width);
         // 背景色、文字色を設定
@@ -379,7 +387,7 @@ impl Editor {
         if message.time.elapsed() < Duration::new(5, 0) {
             let mut text = message.text.clone();
             // 画面からはみ出すメッセージ部分は削除
-            text.truncate(self.terminal.size().width as usize);
+            text.truncate(self.terminal.size().width as usize + LINE_NUMBER_SPACES);
             print!("{text}");
         }
     }
