@@ -41,19 +41,24 @@ impl Document {
     }
     // ドキュメントに行を挿入
     fn insert_newline(&mut self, at: &Position) {
+        if at.y > self.rows.len() {
+            return;
+        }
         // 指定位置がドキュメントの最後行の次の場合
-        if at.y == self.len() {
+        if at.y == self.rows.len() {
             self.rows.push(Row::default());
         } else {
             // atで行を分割(atは後半の行に含まれる)
-            let new_row = self.rows.get_mut(at.y).unwrap().split(at.x);
+            #[allow(clippy::indexing_slicing)]
+            let new_row = self.rows[at.y].split(at.x);
             // 後半行を挿入
+            #[allow(clippy::integer_arithmetic)]
             self.rows.insert(at.y + 1, new_row);
         }
     }
     // 指定した位置の後ろに1文字挿入
     pub fn insert(&mut self, at: &Position, c: char) {
-        if at.y > self.len() {
+        if at.y > self.rows.len() {
             return;
         }
         // 更新フラグを立てる
@@ -64,9 +69,10 @@ impl Document {
             self.insert_newline(at);
             return;
         }
-        if at.y < self.len() {
+        if at.y < self.rows.len() {
             // 指定された位置の後ろに文字を挿入
-            let row = self.rows.get_mut(at.y).unwrap();
+            #[allow(clippy::indexing_slicing)]
+            let row = &mut self.rows[at.y];
             row.insert(at.x, c);
         } else {
             // ドキュメント末尾に入力された文字を含んだ新しい行を追加
@@ -75,8 +81,9 @@ impl Document {
             self.rows.push(row);
         }
     }
+    #[allow(clippy::integer_arithmetic, clippy::indexing_slicing)]
     pub fn delete(&mut self, at: &Position) {
-        let len = self.len();
+        let len = self.rows.len();
         // 指定位置がドキュメントからはみ出している時
         if at.y >= len {
             // 何もしない
@@ -85,15 +92,15 @@ impl Document {
         // 更新フラグを立てる
         self.dirty = true;
         // 指定位置が行の末尾にあり、かつ次の行が存在した時
-        if at.x == self.rows.get_mut(at.y).unwrap().len() && at.y < len - 1 {
+        if at.x == self.rows[at.y].len() && at.y + 1 < len {
             // 指定位置の次の行を削除
             let next_row = self.rows.remove(at.y + 1);
             // 指定位置の行
-            let row = self.rows.get_mut(at.y).unwrap();
+            let row = &mut self.rows[at.y];
             // 結合
             row.append(&next_row);
         } else {
-            let row = self.rows.get_mut(at.y).unwrap();
+            let row = &mut self.rows[at.y];
             row.delete(at.x);
         }
     }

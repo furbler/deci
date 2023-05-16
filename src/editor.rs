@@ -74,8 +74,7 @@ impl Editor {
         let args: Vec<String> = env::args().collect();
         let mut initial_status = String::from("HELP: Ctrl-Q = quit");
         // 引数でファイル名が指定されていたら
-        let document = if args.len() > 1 {
-            let file_name = &args[1];
+        let document = if let Some(file_name) = args.get(1) {
             let doc = Document::open(file_name);
             // 指定されたファイル名が開ければその内容を保存
             if let Ok(doc) = doc {
@@ -258,7 +257,7 @@ impl Editor {
             Key::PageUp | Key::Ctrl('b') => {
                 // 1画面分上に移動
                 y = if y > terminal_height {
-                    y - terminal_height
+                    y.saturating_sub(terminal_height)
                 } else {
                     0
                 }
@@ -266,7 +265,7 @@ impl Editor {
             Key::PageDown | Key::Ctrl('f') => {
                 // 1画面分下に移動
                 y = if y.saturating_add(terminal_height) < document_height {
-                    y + terminal_height
+                    y.saturating_add(terminal_height)
                 } else {
                     document_height
                 }
@@ -314,6 +313,7 @@ impl Editor {
         let width = self.terminal.size().width as usize;
         let len = welcome_message.len();
         // メッセージを中央に置いたときの空けるべき余白を計算
+        #[allow(clippy::integer_arithmetic, clippy::integer_division)]
         let padding = width.saturating_sub(len) / 2;
         let spaces = " ".repeat(padding.saturating_sub(1));
         // 画面中央にメッセージを表示
@@ -329,6 +329,7 @@ impl Editor {
         // カーソルのある行を描画して改行する
         println!("{row}\r");
     }
+    #[allow(clippy::integer_division, clippy::integer_arithmetic)]
     fn draw_rows(&self) {
         let height = self.terminal.size().height;
         for terminal_row in 0..height {
@@ -381,14 +382,14 @@ impl Editor {
             "col: {}/{char_width}",
             self.cursor_position.x.saturating_add(1),
         );
+        #[allow(clippy::integer_arithmetic)]
         let show_len =
             status.len() + line_indicator.len() + column_indicator.len() + modified_indicator.len();
         // 行番号表示スペースも考慮する
         let terminal_width = self.terminal.size().width as usize + LINE_NUMBER_SPACES;
         // 左端のファイル名と右端の行数表示の間は半角空白で埋める
-        if show_len < terminal_width {
-            status.push_str(&" ".repeat(terminal_width - show_len));
-        }
+        status.push_str(&" ".repeat(terminal_width.saturating_sub(show_len)));
+
         status = format!("{status}{line_indicator}{column_indicator}{modified_indicator}");
         // 画面に収まりきらない部分は削る
         status.truncate(terminal_width);
@@ -422,14 +423,11 @@ impl Editor {
             // 1文字ずつ読み込む
             match Terminal::read_key()? {
                 Key::Backspace => {
-                    // 入力済み文字列があれば
-                    if !result.is_empty() {
-                        // 最後の1文字を削除
-                        result = result[..]
-                            .graphemes(true)
-                            .take(result[..].graphemes(true).count() - 1)
-                            .collect();
-                    }
+                    // 最後の1文字を削除
+                    result = result[..]
+                        .graphemes(true)
+                        .take(result[..].graphemes(true).count().saturating_sub(1))
+                        .collect();
                 }
                 // 改行が入力されたら入力終了
                 Key::Char('\n') => break,

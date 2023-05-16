@@ -28,6 +28,7 @@ impl Row {
 
         let mut result = String::new();
         // start番目からend番目まで(書記素単位)の文字列を返す
+        #[allow(clippy::integer_arithmetic)]
         for grapheme in self.string[..]
             .graphemes(true)
             .skip(start)
@@ -67,6 +68,7 @@ impl Row {
         // 文字列数を更新
         self.update_len();
     }
+    #[allow(clippy::integer_arithmetic)]
     pub fn delete(&mut self, at: usize) {
         // カーソルが行の最後にある時
         if at >= self.len() {
