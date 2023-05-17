@@ -160,7 +160,7 @@ impl Editor {
                         "WARNING! File has unsaved changes. Press Ctrl-Q {} more times to quit.",
                         self.quit_times
                     ));
-                    self.quit_times -= 1;
+                    self.quit_times = self.quit_times.saturating_sub(1);
                     return Ok(());
                 }
                 // 更新無し、またはCtrl-Qを規定回数押されたときは終了
@@ -231,11 +231,11 @@ impl Editor {
             Key::Left | Key::Char('h') => {
                 if x > 0 {
                     // 行頭でなければ左に移動
-                    x -= 1;
+                    x = x.saturating_sub(1);
                 } else if y > 0 {
                     // 行頭で、かつドキュメントの最初の行でない場合
                     // 1つ上の行に移動
-                    y -= 1;
+                    y = y.saturating_sub(1);
                     // 行末に移動
                     if let Some(row) = self.document.row(y) {
                         x = row.len();
@@ -246,11 +246,11 @@ impl Editor {
             }
             Key::Right | Key::Char('l') => {
                 if x < width {
-                    x += 1;
+                    x = x.saturating_add(1);
                 } else if y < document_height {
                     // 行末で、かつドキュメントの最後の行でない場合
                     // 下の行の行頭に移動
-                    y += 1;
+                    y = y.saturating_add(1);
                     x = 0;
                 }
             }
@@ -386,7 +386,8 @@ impl Editor {
         let show_len =
             status.len() + line_indicator.len() + column_indicator.len() + modified_indicator.len();
         // 行番号表示スペースも考慮する
-        let terminal_width = self.terminal.size().width as usize + LINE_NUMBER_SPACES;
+        let terminal_width =
+            (self.terminal.size().width as usize).saturating_add(LINE_NUMBER_SPACES);
         // 左端のファイル名と右端の行数表示の間は半角空白で埋める
         status.push_str(&" ".repeat(terminal_width.saturating_sub(show_len)));
 
@@ -409,7 +410,7 @@ impl Editor {
         if message.time.elapsed() < Duration::new(5, 0) {
             let mut text = message.text.clone();
             // 画面からはみ出すメッセージ部分は削除
-            text.truncate(self.terminal.size().width as usize + LINE_NUMBER_SPACES);
+            text.truncate((self.terminal.size().width as usize).saturating_add(LINE_NUMBER_SPACES));
             print!("{text}");
         }
     }
@@ -461,7 +462,7 @@ fn draw_line_number(line_number: usize) {
     // 行番号表示の後に半角スペースを1つ入れる
     print!(
         "{line_number:>digits_width$} ",
-        digits_width = LINE_NUMBER_SPACES - 1
+        digits_width = LINE_NUMBER_SPACES.saturating_sub(1)
     );
     Terminal::reset_bg_color();
 }

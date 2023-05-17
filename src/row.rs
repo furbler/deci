@@ -106,7 +106,7 @@ impl Row {
     // 全角文字にも対応した、画面に収まる文字列を返す
     pub fn clip_string(&self, full_width_offset: usize, half_width_area: usize) -> String {
         let mut current_width = 0;
-        let mut end_idx = 0;
+        let mut end_idx: usize = 0;
         // 画面左側に映らない文字を削除
         let string = self.string[..]
             .graphemes(true)
@@ -121,11 +121,13 @@ impl Row {
             // 次の一文字の幅を取得
             let char_width = UnicodeWidthChar::width(c).unwrap_or(1);
             // 画面右端に到達したら
-            if current_width <= half_width_area && half_width_area <= current_width + char_width {
+            if current_width <= half_width_area
+                && half_width_area <= current_width.saturating_add(char_width)
+            {
                 break;
             }
-            current_width += char_width;
-            end_idx += 1;
+            current_width = current_width.saturating_add(char_width);
+            end_idx = end_idx.saturating_add(1);
         }
         string[..].graphemes(true).take(end_idx).collect::<String>()
     }

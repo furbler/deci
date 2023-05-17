@@ -26,7 +26,7 @@ impl Terminal {
         #[allow(clippy::cast_possible_truncation)]
         Ok(Self {
             size: Size {
-                width: size.0 - LINE_NUMBER_SPACES as u16,
+                width: size.0.saturating_sub(LINE_NUMBER_SPACES as u16),
                 // 2行分空ける
                 height: size.1.saturating_sub(2),
             },
