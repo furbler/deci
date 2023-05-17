@@ -11,12 +11,10 @@ pub struct Row {
 // 文字列スライスからRowへの変換
 impl From<&str> for Row {
     fn from(slice: &str) -> Self {
-        let mut row = Self {
+        Self {
             string: String::from(slice),
-            len_full_width: 0,
-        };
-        row.update_len();
-        row
+            len_full_width: slice.graphemes(true).count(),
+        }
     }
 }
 
@@ -47,58 +45,80 @@ impl Row {
     pub fn len(&self) -> usize {
         self.len_full_width
     }
-    // 全角文字にも対応した行の文字数を返す
-    fn update_len(&mut self) {
-        self.len_full_width = self.string[..].graphemes(true).count();
-    }
     // 指定した位置の後ろに1文字挿入する
     pub fn insert(&mut self, at: usize, c: char) {
         // 挿入位置が文字列の最後のとき
         if at >= self.len() {
             self.string.push(c);
-        } else {
-            // 挿入位置より前の文字列(atを含まない)
-            let mut result: String = self.string[..].graphemes(true).take(at).collect();
-            // 挿入位置より後の文字列(atを含む)
-            let remainder: String = self.string[..].graphemes(true).skip(at).collect();
-            result.push(c);
-            result.push_str(&remainder);
-            self.string = result;
+            // 文字列数を更新
+            self.len_full_width = self.len_full_width.saturating_add(1);
+            return;
         }
-        // 文字列数を更新
-        self.update_len();
+        let mut result: String = String::new();
+        let mut length: usize = 0;
+        // 1文字ずつ処理
+        for (index, grapheme) in self.string[..].graphemes(true).enumerate() {
+            length = length.saturating_add(1);
+            // 指定位置では文字を挿入
+            if index == at {
+                length = length.saturating_add(1);
+                result.push(c);
+            }
+            result.push_str(grapheme);
+        }
+        self.len_full_width = length;
+        self.string = result;
     }
-    #[allow(clippy::integer_arithmetic)]
     pub fn delete(&mut self, at: usize) {
         // カーソルが行の最後にある時
         if at >= self.len() {
             // 何もしない
             return;
         }
-        // atまで(atを含まない)の文字列
-        let mut result: String = self.string[..].graphemes(true).take(at).collect();
-        // atより後の文字列(atを含まない)
-        let remainder: String = self.string[..].graphemes(true).skip(at + 1).collect();
-        // 結合
-        result.push_str(&remainder);
+        let mut result: String = String::new();
+        let mut length: usize = 0;
+        for (index, grapheme) in self.string[..].graphemes(true).enumerate() {
+            // 指定された位置の文字のみスキップ
+            if index != at {
+                length = length.saturating_add(1);
+                result.push_str(grapheme);
+            }
+        }
+        self.len_full_width = length;
         self.string = result;
-        // 長さを更新
-        self.update_len();
     }
     // 自身の後ろに指定された行を結合する
     pub fn append(&mut self, new: &Self) {
         self.string = format!("{}{}", self.string, new.string);
-        self.update_len();
+        self.len_full_width = self.len_full_width.saturating_add(new.len_full_width);
     }
     // 指定位置で行を分割し、後半の行を返す
     pub fn split(&mut self, at: usize) -> Self {
-        let beginning: String = self.string[..].graphemes(true).take(at).collect();
-        let remainder: String = self.string[..].graphemes(true).skip(at).collect();
-        self.string = beginning;
-        // 自身の長さを更新
-        self.update_len();
-        // 分割後後半の行をrow型で返す
-        Self::from(&remainder[..])
+        // 前半行
+        let mut row: String = String::new();
+        let mut length: usize = 0;
+        // 後半行
+        let mut splitted_row: String = String::new();
+        let mut splitted_length: usize = 0;
+        // 1文字ずつ処理
+        for (index, grapheme) in self.string[..].graphemes(true).enumerate() {
+            // 指定された位置の前後で割り振る
+            if index < at {
+                length = length.saturating_add(1);
+                row.push_str(grapheme);
+            } else {
+                splitted_length = splitted_length.saturating_add(1);
+                splitted_row.push_str(grapheme);
+            }
+        }
+        // 前半行
+        self.string = row;
+        self.len_full_width = length;
+        // 後半行
+        Self {
+            string: splitted_row,
+            len_full_width: splitted_length,
+        }
     }
     pub fn as_bytes(&self) -> &[u8] {
         self.string.as_bytes()
