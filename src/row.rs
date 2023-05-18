@@ -123,6 +123,23 @@ impl Row {
     pub fn as_bytes(&self) -> &[u8] {
         self.string.as_bytes()
     }
+    // 引数の文字列が見つかったら全角文字単位での位置を返す
+    pub fn find(&self, query: &str) -> Option<usize> {
+        // 半角文字単位の位置
+        let matching_byte_index = self.string.find(query);
+        // 検索文字列が見つかった場合
+        if let Some(matching_byte_index) = matching_byte_index {
+            // 文字の半角単位の位置と全角単位の位置を比較
+            for (grapheme_index, (byte_index, _)) in
+                self.string[..].grapheme_indices(true).enumerate()
+            {
+                if matching_byte_index == byte_index {
+                    return Some(grapheme_index);
+                }
+            }
+        }
+        None
+    }
     // 全角文字にも対応した、画面に収まる文字列を返す
     pub fn clip_string(&self, full_width_offset: usize, half_width_area: usize) -> String {
         let mut current_width = 0;

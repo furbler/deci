@@ -72,7 +72,9 @@ impl Editor {
     pub fn default() -> Self {
         // コマンドの引数を取得
         let args: Vec<String> = env::args().collect();
-        let mut initial_status = String::from("HELP: Ctrl-Q = quit");
+        // 起動直後にステータスバーに表示するメッセージ
+        let mut initial_status =
+            String::from("HELP: Ctrl-F = find | Ctrl-S = save | Ctrl-Q = quit");
         // 引数でファイル名が指定されていたら
         let document = if let Some(file_name) = args.get(1) {
             let doc = Document::open(file_name);
@@ -167,6 +169,20 @@ impl Editor {
                 self.should_quit = true;
             }
             Key::Ctrl('s') => self.save(),
+            // ノーマルモード時に/で検索
+            Key::Char('/') if self.vim_normal_mode => {
+                // 検索文字列を取得
+                if let Some(query) = self.prompt("Search: ").unwrap_or(None) {
+                    // 検索文字列が見つかった場合
+                    if let Some(position) = self.document.find(&query[..]) {
+                        // カーソルを検索文字列の先頭に移動
+                        self.cursor_position = position;
+                    } else {
+                        // 検索文字列が見つからなかった場合
+                        self.status_message = StatusMessage::from(format!("Not found :{query}."));
+                    }
+                }
+            }
             // Enterキーが押されたとき
             Key::Char('\n') => {
                 self.document.insert(&self.cursor_position, '\n');
@@ -414,6 +430,7 @@ impl Editor {
             print!("{text}");
         }
     }
+    // 引数の文字列を表示してから文字入力を受け付け、入力された文字を返す
     fn prompt(&mut self, prompt: &str) -> Result<Option<String>, std::io::Error> {
         let mut result = String::new();
         loop {

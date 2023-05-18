@@ -121,4 +121,14 @@ impl Document {
     pub fn is_dirty(&self) -> bool {
         self.dirty
     }
+    // 引数の文字列を検索し、見つかった時は全角文字単位の位置を返す
+    pub fn find(&self, query: &str) -> Option<Position> {
+        // 一行ずつ検索
+        for (y, row) in self.rows.iter().enumerate() {
+            if let Some(x) = row.find(query) {
+                return Some(Position { x, y });
+            }
+        }
+        None
+    }
 }
