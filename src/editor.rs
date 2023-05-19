@@ -133,7 +133,7 @@ impl Editor {
         // エディタ起動時にファイル名が指定されてい場合
         if self.document.file_name.is_none() {
             // ファイル名入力を促す
-            let new_name = self.prompt("Save as: ").unwrap_or(None);
+            let new_name = self.prompt("Save as: ", |_, _, _| {}).unwrap_or(None);
             // ファイル名が指定されていなければ
             if new_name.is_none() {
                 // メッセージを表示
@@ -172,7 +172,17 @@ impl Editor {
             // ノーマルモード時に/で検索
             Key::Char('/') if self.vim_normal_mode => {
                 // 検索文字列を取得
-                if let Some(query) = self.prompt("Search: ").unwrap_or(None) {
+                if let Some(query) = self
+                    .prompt("Search: ", |editor, _, query| {
+                        // 改行またはEscが入力されるまでループ
+                        // 文字が入力されるたびに検索文字列の位置にカーソルをジャンプ
+                        if let Some(position) = editor.document.find(query) {
+                            editor.cursor_position = position;
+                            editor.scroll();
+                        }
+                    })
+                    .unwrap_or(None)
+                {
                     // 検索文字列が見つかった場合
                     if let Some(position) = self.document.find(&query[..]) {
                         // カーソルを検索文字列の先頭に移動
@@ -431,15 +441,20 @@ impl Editor {
         }
     }
     // 引数の文字列を表示してから文字入力を受け付け、入力された文字を返す
-    fn prompt(&mut self, prompt: &str) -> Result<Option<String>, std::io::Error> {
+    fn prompt<C>(&mut self, prompt: &str, callback: C) -> Result<Option<String>, std::io::Error>
+    where
+        C: Fn(&mut Self, Key, &String),
+    {
         let mut result = String::new();
+        // 改行またはEscが入力されるまでループ
         loop {
             // プロンプト表示
             self.status_message = StatusMessage::from(format!("{prompt}{result}"));
             self.refresh_screen()?;
 
             // 1文字ずつ読み込む
-            match Terminal::read_key()? {
+            let key = Terminal::read_key()?;
+            match key {
                 Key::Backspace => {
                     // 最後の1文字を削除
                     result = result[..]
@@ -462,6 +477,8 @@ impl Editor {
                 }
                 _ => (),
             }
+            // 入力されるたびに実行される
+            callback(self, key, &result);
         }
         // ステータスメッセージを初期化
         self.status_message = StatusMessage::from(String::new());
