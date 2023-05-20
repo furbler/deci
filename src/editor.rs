@@ -21,7 +21,7 @@ const LINE_NUMBER_SPACES: usize = 5;
 // 変更を未保存のまま終了するときの終了コマンド回数
 const QUIT_TIMES: u8 = 3;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Position {
     pub x: usize,
     pub y: usize,
@@ -152,6 +152,37 @@ impl Editor {
             self.status_message = StatusMessage::from("Error writing file!".to_string());
         }
     }
+    // 文字列検索
+    fn search(&mut self) {
+        // 検索開始前にカーソルの位置を保存
+        let old_position = self.cursor_position.clone();
+        // 検索文字列を取得
+        if let Some(query) = self
+            .prompt("Search: ", |editor, _, query| {
+                // 改行またはEscが入力されるまでループ
+                // 文字が入力されるたびに検索文字列の位置にカーソルをジャンプ
+                if let Some(position) = editor.document.find(query) {
+                    editor.cursor_position = position;
+                    editor.scroll();
+                }
+            })
+            .unwrap_or(None)
+        {
+            // 入力した検索文字列が見つかった場合
+            if let Some(position) = self.document.find(&query[..]) {
+                // カーソルを検索文字列の先頭に移動
+                self.cursor_position = position;
+            } else {
+                // 検索文字列が見つからなかった場合
+                self.status_message = StatusMessage::from(format!("Not found :{query}."));
+            }
+        } else {
+            // 何も入力されない、またはEscでキャンセルされた場合
+            // 検索開始前の位置にカーソルを戻す
+            self.cursor_position = old_position;
+            self.scroll();
+        }
+    }
     fn process_keypress(&mut self) -> Result<(), std::io::Error> {
         let pressed_key = Terminal::read_key()?;
         match pressed_key {
@@ -170,29 +201,7 @@ impl Editor {
             }
             Key::Ctrl('s') => self.save(),
             // ノーマルモード時に/で検索
-            Key::Char('/') if self.vim_normal_mode => {
-                // 検索文字列を取得
-                if let Some(query) = self
-                    .prompt("Search: ", |editor, _, query| {
-                        // 改行またはEscが入力されるまでループ
-                        // 文字が入力されるたびに検索文字列の位置にカーソルをジャンプ
-                        if let Some(position) = editor.document.find(query) {
-                            editor.cursor_position = position;
-                            editor.scroll();
-                        }
-                    })
-                    .unwrap_or(None)
-                {
-                    // 検索文字列が見つかった場合
-                    if let Some(position) = self.document.find(&query[..]) {
-                        // カーソルを検索文字列の先頭に移動
-                        self.cursor_position = position;
-                    } else {
-                        // 検索文字列が見つからなかった場合
-                        self.status_message = StatusMessage::from(format!("Not found :{query}."));
-                    }
-                }
-            }
+            Key::Char('/') if self.vim_normal_mode => self.search(),
             // Enterキーが押されたとき
             Key::Char('\n') => {
                 self.document.insert(&self.cursor_position, '\n');

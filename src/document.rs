@@ -122,6 +122,7 @@ impl Document {
         self.dirty
     }
     // 引数の文字列を検索し、見つかった時は全角文字単位の位置を返す
+    // 引数に空文字列を指定するとSome(0, 0)を返す
     pub fn find(&self, query: &str) -> Option<Position> {
         // 一行ずつ検索
         for (y, row) in self.rows.iter().enumerate() {
