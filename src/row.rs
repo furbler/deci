@@ -123,18 +123,21 @@ impl Row {
     pub fn as_bytes(&self) -> &[u8] {
         self.string.as_bytes()
     }
-    // 引数の文字列が見つかったら全角文字単位での位置を返す
-    pub fn find(&self, query: &str) -> Option<usize> {
+    // 自身のafter文字目以降で引数の文字列が見つかったら全角文字単位での位置を返す
+    pub fn find(&self, query: &str, after: usize) -> Option<usize> {
+        // 先頭の文字を指定の長さだけ削除
+        let substring: String = self.string[..].graphemes(true).skip(after).collect();
         // 半角文字単位の位置
-        let matching_byte_index = self.string.find(query);
+        let matching_byte_index = substring.find(query);
         // 検索文字列が見つかった場合
         if let Some(matching_byte_index) = matching_byte_index {
             // 文字の半角単位の位置と全角単位の位置を比較
             for (grapheme_index, (byte_index, _)) in
-                self.string[..].grapheme_indices(true).enumerate()
+                substring[..].grapheme_indices(true).enumerate()
             {
                 if matching_byte_index == byte_index {
-                    return Some(grapheme_index);
+                    #[allow(clippy::integer_arithmetic)]
+                    return Some(after + grapheme_index);
                 }
             }
         }

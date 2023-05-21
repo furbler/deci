@@ -158,18 +158,34 @@ impl Editor {
         let old_position = self.cursor_position.clone();
         // 検索文字列を取得
         if let Some(query) = self
-            .prompt("Search: ", |editor, _, query| {
-                // 改行またはEscが入力されるまでループ
-                // 文字が入力されるたびに検索文字列の位置にカーソルをジャンプ
-                if let Some(position) = editor.document.find(query) {
-                    editor.cursor_position = position;
-                    editor.scroll();
-                }
-            })
+            .prompt(
+                "Search (ESC to cancel, Arrows to navigate): ",
+                |editor, key, query| {
+                    // このコールバック関数は改行またはEscが入力されるまでループ
+                    // 検索対象をずらすためにカーソルをずらしたか
+                    let mut moved = false;
+                    match key {
+                        Key::Right | Key::Down => {
+                            // 現在の位置から検索すると同じ場所でマッチするので1文字右にずらす
+                            editor.move_cursor(Key::Right);
+                            moved = true;
+                        }
+                        _ => (),
+                    }
+                    if let Some(position) = editor.document.find(query, &editor.cursor_position) {
+                        // 文字が入力されるたびに検索文字列の位置にカーソルをジャンプ
+                        editor.cursor_position = position;
+                        editor.scroll();
+                    } else if moved {
+                        // 検索で見つからなかったらずらしたカーソルを元に戻す
+                        editor.move_cursor(Key::Left);
+                    }
+                },
+            )
             .unwrap_or(None)
         {
             // 入力した検索文字列が見つかった場合
-            if let Some(position) = self.document.find(&query[..]) {
+            if let Some(position) = self.document.find(&query[..], &old_position) {
                 // カーソルを検索文字列の先頭に移動
                 self.cursor_position = position;
             } else {

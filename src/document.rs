@@ -121,14 +121,17 @@ impl Document {
     pub fn is_dirty(&self) -> bool {
         self.dirty
     }
-    // 引数の文字列を検索し、見つかった時は全角文字単位の位置を返す
+    // 指定された位置から引数の文字列を検索し、見つかった時は全角文字単位の位置を返す
     // 引数に空文字列を指定するとSome(0, 0)を返す
-    pub fn find(&self, query: &str) -> Option<Position> {
-        // 一行ずつ検索
-        for (y, row) in self.rows.iter().enumerate() {
-            if let Some(x) = row.find(query) {
+    pub fn find(&self, query: &str, after: &Position) -> Option<Position> {
+        let mut x = after.x;
+        // 指定位置の行から一行ずつ検索
+        for (y, row) in self.rows.iter().enumerate().skip(after.y) {
+            if let Some(x) = row.find(query, x) {
                 return Some(Position { x, y });
             }
+            // 次から行頭から検索
+            x = 0;
         }
         None
     }
