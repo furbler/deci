@@ -2,6 +2,8 @@ use std::cmp;
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
+use crate::editor::SearchDirection;
+
 #[derive(Default)]
 pub struct Row {
     string: String,
@@ -124,11 +126,34 @@ impl Row {
         self.string.as_bytes()
     }
     // 自身のafter文字目以降で引数の文字列が見つかったら全角文字単位での位置を返す
-    pub fn find(&self, query: &str, after: usize) -> Option<usize> {
-        // 先頭の文字を指定の長さだけ削除
-        let substring: String = self.string[..].graphemes(true).skip(after).collect();
-        // 半角文字単位の位置
-        let matching_byte_index = substring.find(query);
+    pub fn find(&self, query: &str, at: usize, direction: SearchDirection) -> Option<usize> {
+        // 指定位置が行末の時は検索結果無し
+        if at > self.len_full_width {
+            return None;
+        }
+        // 検索方向により検索範囲を決める
+        let start = if direction == SearchDirection::Forward {
+            at
+        } else {
+            0
+        };
+        let end = if direction == SearchDirection::Forward {
+            self.len_full_width
+        } else {
+            at
+        };
+        // 指定範囲の文字列を取得
+        #[allow(clippy::integer_arithmetic)]
+        let substring: String = self.string[..]
+            .graphemes(true)
+            .skip(start)
+            .take(end - start)
+            .collect();
+        let matching_byte_index = if direction == SearchDirection::Forward {
+            substring.find(query)
+        } else {
+            substring.rfind(query)
+        };
         // 検索文字列が見つかった場合
         if let Some(matching_byte_index) = matching_byte_index {
             // 文字の半角単位の位置と全角単位の位置を比較
@@ -137,7 +162,7 @@ impl Row {
             {
                 if matching_byte_index == byte_index {
                     #[allow(clippy::integer_arithmetic)]
-                    return Some(after + grapheme_index);
+                    return Some(start + grapheme_index);
                 }
             }
         }

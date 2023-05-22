@@ -1,5 +1,6 @@
 use crate::Position;
 use crate::Row;
+use crate::SearchDirection;
 use std::fs;
 use std::io::Error;
 use std::io::Write;
@@ -123,15 +124,46 @@ impl Document {
     }
     // 指定された位置から引数の文字列を検索し、見つかった時は全角文字単位の位置を返す
     // 引数に空文字列を指定するとSome(0, 0)を返す
-    pub fn find(&self, query: &str, after: &Position) -> Option<Position> {
-        let mut x = after.x;
-        // 指定位置の行から一行ずつ検索
-        for (y, row) in self.rows.iter().enumerate().skip(after.y) {
-            if let Some(x) = row.find(query, x) {
-                return Some(Position { x, y });
+    #[allow(clippy::indexing_slicing)]
+    pub fn find(&self, query: &str, at: &Position, direction: SearchDirection) -> Option<Position> {
+        // atがドキュメントの範囲外の時は何もしない
+        if at.y >= self.rows.len() {
+            return None;
+        }
+        let mut position = Position { x: at.x, y: at.y };
+        // 検索方向により検索範囲を決める
+        let start = if direction == SearchDirection::Forward {
+            at.y
+        } else {
+            0
+        };
+        let end = if direction == SearchDirection::Forward {
+            self.rows.len()
+        } else {
+            at.y.saturating_add(1)
+        };
+        for _ in start..end {
+            // 一行取り出す
+            if let Some(row) = self.rows.get(position.y) {
+                // 行内検索で見つかったらその位置を返す
+                if let Some(x) = row.find(query, position.x, direction) {
+                    position.x = x;
+                    return Some(position);
+                }
+                // 見つからなかった場合
+                if direction == SearchDirection::Forward {
+                    // 次の行の先頭に移動
+                    position.y = position.y.saturating_add(1);
+                    position.x = 0;
+                } else {
+                    // 前の行の末尾に移動
+                    position.y = position.y.saturating_sub(1);
+                    position.x = self.rows[position.y].len();
+                }
+            } else {
+                // 検索範囲の端まで見つからなかったら終了
+                return None;
             }
-            // 次から行頭から検索
-            x = 0;
         }
         None
     }
