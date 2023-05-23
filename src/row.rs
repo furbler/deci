@@ -1,4 +1,5 @@
 use std::cmp;
+use termion::color;
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
@@ -21,29 +22,6 @@ impl From<&str> for Row {
 }
 
 impl Row {
-    // 行から指定した範囲[start..end]のみ(文字数単位)を返す
-    pub fn render(&self, start: usize, end: usize) -> String {
-        let end = cmp::min(end, self.len());
-        let start = cmp::min(start, end);
-
-        let mut result = String::new();
-        // start番目からend番目まで(書記素単位)の文字列を返す
-        #[allow(clippy::integer_arithmetic)]
-        for grapheme in self.string[..]
-            .graphemes(true)
-            .skip(start)
-            .take(end - start)
-        {
-            if grapheme == "/t" {
-                // タブを半角空白に変換
-                result.push(' ');
-            } else {
-                // 書記素一文字ずつを文字列スライス型として追加していく
-                result.push_str(grapheme);
-            }
-        }
-        result
-    }
     pub fn len(&self) -> usize {
         self.len_full_width
     }
@@ -169,7 +147,7 @@ impl Row {
         None
     }
     // 全角文字にも対応した、画面に収まる文字列を返す
-    pub fn clip_string(&self, full_width_offset: usize, half_width_area: usize) -> String {
+    pub fn trim_string(&self, full_width_offset: usize, half_width_area: usize) -> String {
         let mut current_width = 0;
         let mut end_idx: usize = 0;
         // 画面左側に映らない文字を削除
@@ -194,16 +172,44 @@ impl Row {
             current_width = current_width.saturating_add(char_width);
             end_idx = end_idx.saturating_add(1);
         }
-        string[..].graphemes(true).take(end_idx).collect::<String>()
+        let mut result = String::new();
+        for grapheme in string[..].graphemes(true).take(end_idx) {
+            if let Some(c) = grapheme.chars().next() {
+                if c == '\t' {
+                    // タブは半角空白に変換
+                    result.push(' ');
+                } else if c.is_ascii_digit() {
+                    // 数字には色を付ける
+                    result.push_str(
+                        &format!(
+                            "{}{}{}",
+                            color::Fg(color::Rgb(220, 163, 163)),
+                            c,
+                            color::Fg(color::Reset)
+                        )[..],
+                    );
+                } else {
+                    result.push(c);
+                }
+            }
+        }
+        result
     }
     // 指定した範囲[start..end] (全角文字単位)の文字列を半角文字単位で何個分かを返す
     pub fn full2half_width(&self, full_width_start: usize, full_width_end: usize) -> usize {
-        let string = self.render(full_width_start, full_width_end);
+        let end = cmp::min(full_width_end, self.len());
+        let start = cmp::min(full_width_start, full_width_end);
+        #[allow(clippy::integer_arithmetic)]
+        let string = self.string[..]
+            .graphemes(true)
+            .skip(start)
+            .take(end - start)
+            .collect::<String>();
         UnicodeWidthStr::width(&string[..])
     }
     // 指定した範囲[..end] (半角文字単位)の文字列を全角文字単位で何個分かを返す
     pub fn half2full_width(&self, half_width_end: usize) -> usize {
-        let string = self.clip_string(0, half_width_end);
+        let string = self.trim_string(0, half_width_end);
         UnicodeWidthStr::width(&string[..])
     }
 }
