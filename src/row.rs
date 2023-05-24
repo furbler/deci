@@ -189,6 +189,7 @@ impl Row {
             end_idx = end_idx.saturating_add(1);
         }
         let mut result = String::new();
+        let mut current_highlighting = &highlighting::Type::None;
         for (index, grapheme) in string[..].graphemes(true).enumerate().take(end_idx) {
             if let Some(c) = grapheme.chars().next() {
                 // 1文字の色を取得
@@ -196,22 +197,29 @@ impl Row {
                     .highlighting
                     .get(index)
                     .unwrap_or(&highlighting::Type::None);
-                let start_highlight =
-                    format!("{}", termion::color::Fg(highlighting_type.to_color()));
-                // 色情報を付与
-                result.push_str(&start_highlight[..]);
-
+                // 前の文字と色が違う場合
+                if highlighting_type != current_highlighting {
+                    current_highlighting = highlighting_type;
+                    // 色情報を付与
+                    let start_highlight = if highlighting_type == &highlighting::Type::None {
+                        // 属性無しの場合はデフォルトの色に戻す
+                        format!("{}", termion::color::Fg(color::Reset))
+                    } else {
+                        format!("{}", termion::color::Fg(highlighting_type.to_color()))
+                    };
+                    result.push_str(&start_highlight[..]);
+                }
                 if c == '\t' {
                     // タブは半角空白に変換
                     result.push(' ');
                 } else {
                     result.push(c);
                 }
-                // 色情報をリセット
-                let end_highlight = format!("{}", termion::color::Fg(color::Reset));
-                result.push_str(&end_highlight[..]);
             }
         }
+        // 最後に色情報をリセット
+        let end_highlight = format!("{}", termion::color::Fg(color::Reset));
+        result.push_str(&end_highlight[..]);
         result
     }
     // 指定した範囲[start..end] (全角文字単位)の文字列を半角文字単位で何個分かを返す
