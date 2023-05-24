@@ -21,7 +21,10 @@ impl Document {
         let mut rows = Vec::new();
         // 一行ずつ保存する
         for value in contents.lines() {
-            rows.push(Row::from(value));
+            let mut row = Row::from(value);
+            // 行全体のハイライトを行う
+            row.highlight();
+            rows.push(row);
         }
         Ok(Self {
             rows,
@@ -51,7 +54,11 @@ impl Document {
         } else {
             // atで行を分割(atは後半の行に含まれる)
             #[allow(clippy::indexing_slicing)]
-            let new_row = self.rows[at.y].split(at.x);
+            let current_row = &mut self.rows[at.y];
+            let mut new_row = current_row.split(at.x);
+            // 分割前後の行をハイライト
+            current_row.highlight();
+            new_row.highlight();
             // 後半行を挿入
             #[allow(clippy::integer_arithmetic)]
             self.rows.insert(at.y + 1, new_row);
@@ -75,10 +82,12 @@ impl Document {
             #[allow(clippy::indexing_slicing)]
             let row = &mut self.rows[at.y];
             row.insert(at.x, c);
+            row.highlight();
         } else {
             // ドキュメント末尾に入力された文字を含んだ新しい行を追加
             let mut row = Row::default();
             row.insert(0, c);
+            row.highlight();
             self.rows.push(row);
         }
     }
@@ -100,9 +109,11 @@ impl Document {
             let row = &mut self.rows[at.y];
             // 結合
             row.append(&next_row);
+            row.highlight();
         } else {
             let row = &mut self.rows[at.y];
             row.delete(at.x);
+            row.highlight();
         }
     }
     // 上書き保存
@@ -123,7 +134,7 @@ impl Document {
         self.dirty
     }
     // 指定された位置から引数の文字列を検索し、見つかった時は全角文字単位の位置を返す
-    // 引数に空文字列を指定するとSome(0, 0)を返す
+    // queryに空文字列を指定するとSome(0, 0)を返す
     #[allow(clippy::indexing_slicing)]
     pub fn find(&self, query: &str, at: &Position, direction: SearchDirection) -> Option<Position> {
         // atがドキュメントの範囲外の時は何もしない

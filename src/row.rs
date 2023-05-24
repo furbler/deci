@@ -4,10 +4,12 @@ use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::editor::SearchDirection;
+use crate::highlighting;
 
 #[derive(Default)]
 pub struct Row {
     string: String,
+    highlighting: Vec<highlighting::Type>,
     // 全角文字にも対応した行の文字数
     len_full_width: usize,
 }
@@ -16,6 +18,7 @@ impl From<&str> for Row {
     fn from(slice: &str) -> Self {
         Self {
             string: String::from(slice),
+            highlighting: Vec::new(),
             len_full_width: slice.graphemes(true).count(),
         }
     }
@@ -98,6 +101,7 @@ impl Row {
         Self {
             string: splitted_row,
             len_full_width: splitted_length,
+            highlighting: Vec::new(),
         }
     }
     pub fn as_bytes(&self) -> &[u8] {
@@ -146,6 +150,18 @@ impl Row {
         }
         None
     }
+    pub fn highlight(&mut self) {
+        let mut highlighting = Vec::new();
+        // 1文字ずつハイライトを行う
+        for c in self.string.chars() {
+            if c.is_ascii_digit() {
+                highlighting.push(highlighting::Type::Number);
+            } else {
+                highlighting.push(highlighting::Type::None);
+            }
+        }
+        self.highlighting = highlighting;
+    }
     // 全角文字にも対応した、画面に収まる文字列を返す
     pub fn trim_string(&self, full_width_offset: usize, half_width_area: usize) -> String {
         let mut current_width = 0;
@@ -173,24 +189,27 @@ impl Row {
             end_idx = end_idx.saturating_add(1);
         }
         let mut result = String::new();
-        for grapheme in string[..].graphemes(true).take(end_idx) {
+        for (index, grapheme) in string[..].graphemes(true).enumerate().take(end_idx) {
             if let Some(c) = grapheme.chars().next() {
+                // 1文字の色を取得
+                let highlighting_type = self
+                    .highlighting
+                    .get(index)
+                    .unwrap_or(&highlighting::Type::None);
+                let start_highlight =
+                    format!("{}", termion::color::Fg(highlighting_type.to_color()));
+                // 色情報を付与
+                result.push_str(&start_highlight[..]);
+
                 if c == '\t' {
                     // タブは半角空白に変換
                     result.push(' ');
-                } else if c.is_ascii_digit() {
-                    // 数字には色を付ける
-                    result.push_str(
-                        &format!(
-                            "{}{}{}",
-                            color::Fg(color::Rgb(220, 163, 163)),
-                            c,
-                            color::Fg(color::Reset)
-                        )[..],
-                    );
                 } else {
                     result.push(c);
                 }
+                // 色情報をリセット
+                let end_highlight = format!("{}", termion::color::Fg(color::Reset));
+                result.push_str(&end_highlight[..]);
             }
         }
         result

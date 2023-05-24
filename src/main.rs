@@ -9,6 +9,7 @@ mod document;
 mod editor;
 mod row;
 mod terminal;
+mod highlighting;
 
 use document::Document;
 use editor::Editor;
