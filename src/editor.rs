@@ -194,6 +194,8 @@ impl Editor {
                         // 検索で見つからなかったらずらしたカーソルを元に戻す
                         editor.move_cursor(Key::Left);
                     }
+                    // 検索文字列をハイライト
+                    editor.document.highlight(Some(query));
                 },
             )
             .unwrap_or(None);
@@ -203,6 +205,8 @@ impl Editor {
             self.cursor_position = old_position;
             self.scroll();
         }
+        // 検索文字列のハイライトを解除
+        self.document.highlight(None);
         // 入力された文字列は使わない
     }
     fn process_keypress(&mut self) -> Result<(), std::io::Error> {

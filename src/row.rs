@@ -110,7 +110,7 @@ impl Row {
     // 自身のafter文字目以降で引数の文字列が見つかったら全角文字単位での位置を返す
     pub fn find(&self, query: &str, at: usize, direction: SearchDirection) -> Option<usize> {
         // 指定位置が行末の時は検索結果無し
-        if at > self.len_full_width {
+        if at > self.len_full_width || query.is_empty() {
             return None;
         }
         // 検索方向により検索範囲を決める
@@ -150,16 +150,53 @@ impl Row {
         }
         None
     }
-    pub fn highlight(&mut self) {
+    pub fn highlight(&mut self, word: Option<&str>) {
         let mut highlighting = Vec::new();
+        let chars: Vec<char> = self.string.chars().collect();
+        let mut matches = Vec::new();
+        let mut search_index = 0;
+        // 文字列の指定がある場合
+        if let Some(word) = word {
+            // 指定位置から検索文字列が見つかる限り繰り返す
+            while let Some(search_match) = self.find(word, search_index, SearchDirection::Forward) {
+                // 検索文字列が見つかった場所を保存
+                matches.push(search_match);
+                if let Some(next_index) = search_match.checked_add(word[..].graphemes(true).count())
+                {
+                    // 次の検索開始位置
+                    search_index = next_index;
+                } else {
+                    break;
+                }
+            }
+        }
+
+        let mut index = 0;
         // 1文字ずつハイライトを行う
-        for c in self.string.chars() {
+
+        #[allow(clippy::integer_arithmetic)]
+        while let Some(c) = chars.get(index) {
+            // 文字列の指定がある場合
+            if let Some(word) = word {
+                // 指定文字列の時
+                if matches.contains(&index) {
+                    // 指定文字列の範囲はハイライト
+                    for _ in word[..].graphemes(true) {
+                        index += 1;
+                        highlighting.push(highlighting::Type::Match);
+                    }
+                    continue;
+                }
+            }
             if c.is_ascii_digit() {
                 highlighting.push(highlighting::Type::Number);
             } else {
                 highlighting.push(highlighting::Type::None);
             }
+            // 次の文字へ
+            index += 1;
         }
+
         self.highlighting = highlighting;
     }
     // 全角文字にも対応した、画面に収まる文字列を返す
