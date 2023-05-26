@@ -170,10 +170,9 @@ impl Row {
                 }
             }
         }
-
+        let mut prev_is_separator = true;
         let mut index = 0;
         // 1文字ずつハイライトを行う
-
         #[allow(clippy::integer_arithmetic)]
         while let Some(c) = chars.get(index) {
             // 文字列の指定がある場合
@@ -188,11 +187,30 @@ impl Row {
                     continue;
                 }
             }
-            if c.is_ascii_digit() {
+            // 前の文字のハイライトを取得
+            let previous_highlight = if index > 0 {
+                #[allow(clippy::integer_arithmetic)]
+                highlighting
+                    .get(index - 1)
+                    .unwrap_or(&highlighting::Type::None)
+            } else {
+                // 現在行頭の場合はハイライトなし
+                &highlighting::Type::None
+            };
+            // 現在の文字が数字で、前の文字が区切り文字または数字の場合
+            // または数字の後に小数点が来た場合(小数点)
+            if (c.is_ascii_digit()
+                && (prev_is_separator || previous_highlight == &highlighting::Type::Number))
+                || (c == &'.' && previous_highlight == &highlighting::Type::Number)
+            {
+                // 数字としてハイライト
                 highlighting.push(highlighting::Type::Number);
             } else {
+                // ハイライトなし
                 highlighting.push(highlighting::Type::None);
             }
+            // 区切り文字または空白文字の場合はtrue
+            prev_is_separator = c.is_ascii_punctuation() || c.is_ascii_whitespace();
             // 次の文字へ
             index += 1;
         }
