@@ -17,6 +17,7 @@ use editor::Editor;
 use editor::Position;
 use editor::SearchDirection;
 use filetype::FileType;
+use filetype::HighlightingOptions;
 use row::Row;
 use terminal::Terminal;
 

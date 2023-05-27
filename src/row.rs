@@ -5,6 +5,7 @@ use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::editor::SearchDirection;
 use crate::highlighting;
+use crate::HighlightingOptions;
 
 #[derive(Default)]
 pub struct Row {
@@ -150,7 +151,7 @@ impl Row {
         }
         None
     }
-    pub fn highlight(&mut self, word: Option<&str>) {
+    pub fn highlight(&mut self, opts: HighlightingOptions, word: Option<&str>) {
         let mut highlighting = Vec::new();
         let chars: Vec<char> = self.string.chars().collect();
         let mut matches = Vec::new();
@@ -197,14 +198,20 @@ impl Row {
                 // 現在行頭の場合はハイライトなし
                 &highlighting::Type::None
             };
-            // 現在の文字が数字で、前の文字が区切り文字または数字の場合
-            // または数字の後に小数点が来た場合(小数点)
-            if (c.is_ascii_digit()
-                && (prev_is_separator || previous_highlight == &highlighting::Type::Number))
-                || (c == &'.' && previous_highlight == &highlighting::Type::Number)
-            {
-                // 数字としてハイライト
-                highlighting.push(highlighting::Type::Number);
+            // 数字にハイライトを付ける場合
+            if opts.numbers {
+                // 現在の文字が数字で、前の文字が区切り文字または数字の場合
+                // または数字の後に小数点が来た場合(小数点)
+                if (c.is_ascii_digit()
+                    && (prev_is_separator || previous_highlight == &highlighting::Type::Number))
+                    || (c == &'.' && previous_highlight == &highlighting::Type::Number)
+                {
+                    // 数字としてハイライト
+                    highlighting.push(highlighting::Type::Number);
+                } else {
+                    // ハイライトなし
+                    highlighting.push(highlighting::Type::None);
+                }
             } else {
                 // ハイライトなし
                 highlighting.push(highlighting::Type::None);

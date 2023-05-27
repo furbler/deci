@@ -1,10 +1,9 @@
 pub struct FileType {
     name: String,
-    #[allow(dead_code)]
     hl_opts: HighlightingOptions,
 }
 
-#[derive(Default)]
+#[derive(Default, Copy, Clone)]
 pub struct HighlightingOptions {
     // デフォルト値はfalse
     pub numbers: bool,
@@ -21,6 +20,9 @@ impl Default for FileType {
 impl FileType {
     pub fn name(&self) -> String {
         self.name.clone()
+    }
+    pub fn highlighting_options(&self) -> HighlightingOptions {
+        self.hl_opts
     }
     // ファイル名からファイルタイプを判断し、設定する
     pub fn from(file_name: &str) -> Self {

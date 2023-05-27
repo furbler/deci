@@ -20,19 +20,20 @@ impl Document {
     pub fn open(filename: &str) -> Result<Self, std::io::Error> {
         // 指定したファイルの中身を読み込む
         let contents = fs::read_to_string(filename)?;
+        let file_type = FileType::from(filename);
         let mut rows = Vec::new();
         // 一行ずつ保存する
         for value in contents.lines() {
             let mut row = Row::from(value);
             // 行全体のハイライトを行う
-            row.highlight(None);
+            row.highlight(file_type.highlighting_options(), None);
             rows.push(row);
         }
         Ok(Self {
             rows,
             file_name: Some(filename.to_string()),
             dirty: false,
-            file_type: FileType::from(filename),
+            file_type,
         })
     }
     // ファイルタイプ名を返す
@@ -64,8 +65,8 @@ impl Document {
             let current_row = &mut self.rows[at.y];
             let mut new_row = current_row.split(at.x);
             // 分割前後の行をハイライト
-            current_row.highlight(None);
-            new_row.highlight(None);
+            current_row.highlight(self.file_type.highlighting_options(), None);
+            new_row.highlight(self.file_type.highlighting_options(), None);
             // 後半行を挿入
             #[allow(clippy::integer_arithmetic)]
             self.rows.insert(at.y + 1, new_row);
@@ -89,12 +90,12 @@ impl Document {
             #[allow(clippy::indexing_slicing)]
             let row = &mut self.rows[at.y];
             row.insert(at.x, c);
-            row.highlight(None);
+            row.highlight(self.file_type.highlighting_options(), None);
         } else {
             // ドキュメント末尾に入力された文字を含んだ新しい行を追加
             let mut row = Row::default();
             row.insert(0, c);
-            row.highlight(None);
+            row.highlight(self.file_type.highlighting_options(), None);
             self.rows.push(row);
         }
     }
@@ -116,11 +117,11 @@ impl Document {
             let row = &mut self.rows[at.y];
             // 結合
             row.append(&next_row);
-            row.highlight(None);
+            row.highlight(self.file_type.highlighting_options(), None);
         } else {
             let row = &mut self.rows[at.y];
             row.delete(at.x);
-            row.highlight(None);
+            row.highlight(self.file_type.highlighting_options(), None);
         }
     }
     // 上書き保存
@@ -188,7 +189,7 @@ impl Document {
     }
     pub fn highlight(&mut self, word: Option<&str>) {
         for row in &mut self.rows {
-            row.highlight(word);
+            row.highlight(self.file_type.highlighting_options(), word);
         }
     }
 }
