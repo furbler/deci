@@ -1,3 +1,4 @@
+use crate::FileType;
 use crate::Position;
 use crate::Row;
 use crate::SearchDirection;
@@ -11,6 +12,7 @@ pub struct Document {
     pub file_name: Option<String>,
     // ローカルのファイルに対し更新があればtrue、無ければfalse
     dirty: bool,
+    file_type: FileType,
 }
 
 impl Document {
@@ -30,7 +32,12 @@ impl Document {
             rows,
             file_name: Some(filename.to_string()),
             dirty: false,
+            file_type: FileType::from(filename),
         })
+    }
+    // ファイルタイプ名を返す
+    pub fn file_type(&self) -> String {
+        self.file_type.name()
     }
     // 指定された行が存在すればその行をSomeで包んで、なければNoneを返す
     pub fn row(&self, index: usize) -> Option<&Row> {
@@ -125,6 +132,7 @@ impl Document {
                 file.write_all(row.as_bytes())?;
                 file.write_all(b"\n")?;
             }
+            self.file_type = FileType::from(file_name);
             // 更新フラグを下ろす
             self.dirty = false;
         }

@@ -429,7 +429,8 @@ impl Editor {
         status = format!("{file_name}  ");
         // カーソルのある行/総行数 (最初を1とする)
         let line_indicator = format!(
-            "line: {}/{}  ",
+            "{} | line: {}/{}  ",
+            self.document.file_type(),
             self.cursor_position.y.saturating_add(1),
             self.document.len()
         );

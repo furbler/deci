@@ -7,14 +7,16 @@
 )]
 mod document;
 mod editor;
+mod filetype;
+mod highlighting;
 mod row;
 mod terminal;
-mod highlighting;
 
 use document::Document;
 use editor::Editor;
 use editor::Position;
 use editor::SearchDirection;
+use filetype::FileType;
 use row::Row;
 use terminal::Terminal;
 
