@@ -199,7 +199,7 @@ impl Row {
                 &highlighting::Type::None
             };
             // 数字にハイライトを付ける場合
-            if opts.numbers {
+            if opts.numbers() {
                 // 現在の文字が数字で、前の文字が区切り文字または数字の場合
                 // または数字の後に小数点が来た場合(小数点)
                 if (c.is_ascii_digit()

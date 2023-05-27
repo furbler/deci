@@ -136,15 +136,14 @@ impl Editor {
     }
     // ファイルに保存
     fn save(&mut self) {
-        // エディタ起動時にファイル名が指定されてい場合
+        // エディタ起動時にファイル名が指定されていなかった場合
         if self.document.file_name.is_none() {
             // ファイル名入力を促す
             let new_name = self.prompt("Save as: ", |_, _, _| {}).unwrap_or(None);
-            // ファイル名が指定されていなければ
+            // ファイル名が入力されなければ
             if new_name.is_none() {
-                // メッセージを表示
+                // メッセージを表示して保存はしない
                 self.status_message = StatusMessage::from("Save aborted.".to_string());
-                // 何もしない
                 return;
             }
             self.document.file_name = new_name;

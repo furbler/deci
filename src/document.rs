@@ -124,16 +124,18 @@ impl Document {
             row.highlight(self.file_type.highlighting_options(), None);
         }
     }
-    // 上書き保存
     pub fn save(&mut self) -> Result<(), Error> {
+        // ファイル名取得
         if let Some(file_name) = &self.file_name {
             let mut file = fs::File::create(file_name)?;
+            self.file_type = FileType::from(file_name);
             // 一行ずつ保存
-            for row in &self.rows {
+            for row in &mut self.rows {
                 file.write_all(row.as_bytes())?;
                 file.write_all(b"\n")?;
+                // ハイライト更新
+                row.highlight(self.file_type.highlighting_options(), None);
             }
-            self.file_type = FileType::from(file_name);
             // 更新フラグを下ろす
             self.dirty = false;
         }

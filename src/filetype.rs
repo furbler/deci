@@ -6,7 +6,12 @@ pub struct FileType {
 #[derive(Default, Copy, Clone)]
 pub struct HighlightingOptions {
     // デフォルト値はfalse
-    pub numbers: bool,
+    numbers: bool,
+}
+impl HighlightingOptions {
+    pub fn numbers(self) -> bool {
+        self.numbers
+    }
 }
 
 impl Default for FileType {
