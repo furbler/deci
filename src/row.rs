@@ -172,6 +172,8 @@ impl Row {
             }
         }
         let mut prev_is_separator = true;
+        // 文字列の中
+        let mut in_string = false;
         let mut index = 0;
         // 1文字ずつハイライトを行う
         #[allow(clippy::integer_arithmetic)]
@@ -198,13 +200,40 @@ impl Row {
                 // 現在行頭の場合はハイライトなし
                 &highlighting::Type::None
             };
+            // 文字列にハイライトを付ける場合
+            if opts.strings() {
+                // 文字列の中の場合
+                if in_string {
+                    highlighting.push(highlighting::Type::String);
+                    if *c == '"' {
+                        // 文字列終了
+                        in_string = false;
+                        prev_is_separator = true;
+                    } else {
+                        // 文字列継続
+                        prev_is_separator = false;
+                    }
+                    index += 1;
+                    continue;
+                } else if prev_is_separator && *c == '"' {
+                    // 文字列の外で、前の文字が区切り文字で、現在の文字がダブルクォートの場合
+                    // 通常の文字と連続して存在するダブルクオートは文字列の開始と判定しない
+                    // 文字列開始
+                    highlighting.push(highlighting::Type::String);
+                    in_string = true;
+                    prev_is_separator = true;
+                    index += 1;
+                    continue;
+                }
+            }
+            // 現在の文字が文字列の中でなければ
             // 数字にハイライトを付ける場合
             if opts.numbers() {
                 // 現在の文字が数字で、前の文字が区切り文字または数字の場合
                 // または数字の後に小数点が来た場合(小数点)
                 if (c.is_ascii_digit()
-                    && (prev_is_separator || previous_highlight == &highlighting::Type::Number))
-                    || (c == &'.' && previous_highlight == &highlighting::Type::Number)
+                    && (prev_is_separator || *previous_highlight == highlighting::Type::Number))
+                    || (*c == '.' && *previous_highlight == highlighting::Type::Number)
                 {
                     // 数字としてハイライト
                     highlighting.push(highlighting::Type::Number);
