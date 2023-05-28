@@ -205,6 +205,13 @@ impl Row {
                 // 文字列の中の場合
                 if in_string {
                     highlighting.push(highlighting::Type::String);
+                    // バックスラッシュが行末以外に存在する場合
+                    if *c == '\\' && index < self.len().saturating_sub(1) {
+                        // バックスラッシュ自身とその次の文字を無条件にハイライト
+                        highlighting.push(highlighting::Type::String);
+                        index += 2;
+                        continue;
+                    }
                     if *c == '"' {
                         // 文字列終了
                         in_string = false;
