@@ -8,6 +8,7 @@ pub struct HighlightingOptions {
     // デフォルト値はfalse
     numbers: bool,
     strings: bool,
+    characters: bool,
 }
 
 impl Default for FileType {
@@ -34,6 +35,7 @@ impl FileType {
                 hl_opts: HighlightingOptions {
                     numbers: true,
                     strings: true,
+                    characters: true,
                 },
             };
         }
@@ -47,5 +49,8 @@ impl HighlightingOptions {
     }
     pub fn strings(self) -> bool {
         self.strings
+    }
+    pub fn characters(self) -> bool {
+        self.characters
     }
 }

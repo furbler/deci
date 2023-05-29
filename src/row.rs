@@ -200,6 +200,38 @@ impl Row {
                 // 現在行頭の場合はハイライトなし
                 &highlighting::Type::None
             };
+            // シングルクオートに挟まれた文字にハイライトを付ける場合
+            // 文字列の外にシングルクオートが存在した場合
+            if opts.characters() && !in_string && *c == '\'' {
+                prev_is_separator = true;
+                // 次の1文字を取得
+                if let Some(next_char) = chars.get(index.saturating_add(1)) {
+                    let closing_index = if *next_char == '\\' {
+                        // 次の文字がバックスラッシュの場合は2文字分飛ばす
+                        index.saturating_add(3)
+                    } else {
+                        // 1文字だけ飛ばす
+                        index.saturating_add(2)
+                    };
+                    // 閉じ記号が想定される位置の文字を取得
+                    if let Some(closing_char) = chars.get(closing_index) {
+                        // 閉じ記号が見つかったら
+                        if *closing_char == '\'' {
+                            // 両側のシングルクオートとそれに挟まれた文字をハイライト
+                            for _ in 0..=closing_index.saturating_sub(index) {
+                                highlighting.push(highlighting::Type::Character);
+                                index += 1;
+                            }
+                            continue;
+                        }
+                    }
+                };
+                // 閉じ記号が見つからないまま行が終了した場合
+                highlighting.push(highlighting::Type::None);
+                index += 1;
+                continue;
+            }
+
             // 文字列にハイライトを付ける場合
             if opts.strings() {
                 // 文字列の中の場合
@@ -257,7 +289,7 @@ impl Row {
             // 次の文字へ
             index += 1;
         }
-
+        // 1行分のハイライトを更新
         self.highlighting = highlighting;
     }
     // 全角文字にも対応した、画面に収まる文字列を返す
