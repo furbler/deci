@@ -3,12 +3,14 @@ pub struct FileType {
     hl_opts: HighlightingOptions,
 }
 
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Default, Copy, Clone)]
 pub struct HighlightingOptions {
     // デフォルト値はfalse
     numbers: bool,
     strings: bool,
     characters: bool,
+    comments: bool,
 }
 
 impl Default for FileType {
@@ -36,6 +38,7 @@ impl FileType {
                     numbers: true,
                     strings: true,
                     characters: true,
+                    comments: true,
                 },
             };
         }
@@ -52,5 +55,8 @@ impl HighlightingOptions {
     }
     pub fn characters(self) -> bool {
         self.characters
+    }
+    pub fn comments(self) -> bool {
+        self.comments
     }
 }

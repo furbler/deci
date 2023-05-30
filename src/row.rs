@@ -151,6 +151,7 @@ impl Row {
         }
         None
     }
+    #[allow(clippy::too_many_lines)]
     pub fn highlight(&mut self, opts: HighlightingOptions, word: Option<&str>) {
         let mut highlighting = Vec::new();
         let chars: Vec<char> = self.string.chars().collect();
@@ -264,6 +265,20 @@ impl Row {
                     index += 1;
                     continue;
                 }
+            }
+            // 文字列の外に/が存在した場合
+            if opts.comments() && *c == '/' {
+                if let Some(next_char) = chars.get(index.saturating_add(1)) {
+                    // 連続して/が存在する場合はコメントと判定
+                    if *next_char == '/' {
+                        for _ in index..chars.len() {
+                            // 行末まで全てコメント
+                            highlighting.push(highlighting::Type::Comment);
+                        }
+                        // 行のハイライト処理終了
+                        break;
+                    }
+                };
             }
             // 現在の文字が文字列の中でなければ
             // 数字にハイライトを付ける場合
