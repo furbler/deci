@@ -151,162 +151,188 @@ impl Row {
         }
         None
     }
-    #[allow(clippy::too_many_lines)]
-    pub fn highlight(&mut self, opts: HighlightingOptions, word: Option<&str>) {
-        let mut highlighting = Vec::new();
-        let chars: Vec<char> = self.string.chars().collect();
-        let mut matches = Vec::new();
-        let mut search_index = 0;
-        // 文字列の指定がある場合
+    fn highlight_match(&mut self, word: Option<&str>) {
+        // 検索文字列が指定されていた場合のみハイライト追加
         if let Some(word) = word {
-            // 指定位置から検索文字列が見つかる限り繰り返す
-            while let Some(search_match) = self.find(word, search_index, SearchDirection::Forward) {
-                // 検索文字列が見つかった場所を保存
-                matches.push(search_match);
+            // 検索文字列が空文字列の場合はハイライトなし
+            if word.is_empty() {
+                return;
+            }
+            let mut index = 0;
+            // 見つかった検索文字列の位置
+            while let Some(search_match) = self.find(word, index, SearchDirection::Forward) {
+                // 見つかった検索文字列の末尾の位置
                 if let Some(next_index) = search_match.checked_add(word[..].graphemes(true).count())
                 {
-                    // 次の検索開始位置
-                    search_index = next_index;
+                    // 見つかった検索文字列をハイライト
+                    #[allow(clippy::indexing_slicing)]
+                    for i in search_match..next_index {
+                        self.highlighting[i] = highlighting::Type::Match;
+                    }
+                    // 次の検索開始地点を更新
+                    index = next_index;
                 } else {
                     break;
                 }
             }
         }
-        let mut prev_is_separator = true;
-        // 文字列の中
-        let mut in_string = false;
-        let mut index = 0;
-        // 1文字ずつハイライトを行う
-        #[allow(clippy::integer_arithmetic)]
-        while let Some(c) = chars.get(index) {
-            // 文字列の指定がある場合
-            if let Some(word) = word {
-                // 指定文字列の時
-                if matches.contains(&index) {
-                    // 指定文字列の範囲はハイライト
-                    for _ in word[..].graphemes(true) {
-                        index += 1;
-                        highlighting.push(highlighting::Type::Match);
-                    }
-                    continue;
-                }
-            }
-            // 前の文字のハイライトを取得
-            let previous_highlight = if index > 0 {
-                #[allow(clippy::integer_arithmetic)]
-                highlighting
-                    .get(index - 1)
-                    .unwrap_or(&highlighting::Type::None)
-            } else {
-                // 現在行頭の場合はハイライトなし
-                &highlighting::Type::None
-            };
-            // シングルクオートに挟まれた文字にハイライトを付ける場合
-            // 文字列の外にシングルクオートが存在した場合
-            if opts.characters() && !in_string && *c == '\'' {
-                prev_is_separator = true;
-                // 次の1文字を取得
-                if let Some(next_char) = chars.get(index.saturating_add(1)) {
-                    let closing_index = if *next_char == '\\' {
-                        // 次の文字がバックスラッシュの場合は2文字分飛ばす
-                        index.saturating_add(3)
-                    } else {
-                        // 1文字だけ飛ばす
-                        index.saturating_add(2)
-                    };
-                    // 閉じ記号が想定される位置の文字を取得
-                    if let Some(closing_char) = chars.get(closing_index) {
-                        // 閉じ記号が見つかったら
-                        if *closing_char == '\'' {
-                            // 両側のシングルクオートとそれに挟まれた文字をハイライト
-                            for _ in 0..=closing_index.saturating_sub(index) {
-                                highlighting.push(highlighting::Type::Character);
-                                index += 1;
-                            }
-                            continue;
-                        }
-                    }
-                };
-                // 閉じ記号が見つからないまま行が終了した場合
-                highlighting.push(highlighting::Type::None);
-                index += 1;
-                continue;
-            }
+    }
 
-            // 文字列にハイライトを付ける場合
-            if opts.strings() {
-                // 文字列の中の場合
-                if in_string {
-                    highlighting.push(highlighting::Type::String);
-                    // バックスラッシュが行末以外に存在する場合
-                    if *c == '\\' && index < self.len().saturating_sub(1) {
-                        // バックスラッシュ自身とその次の文字を無条件にハイライト
-                        highlighting.push(highlighting::Type::String);
-                        index += 2;
-                        continue;
+    fn highlight_char(
+        &mut self,
+        index: &mut usize,
+        opts: HighlightingOptions,
+        c: char,
+        chars: &[char],
+    ) -> bool {
+        // シングルクオートに挟まれた文字にハイライトを付ける場合
+        if opts.characters() && c == '\'' {
+            // 次の1文字を取得
+            if let Some(next_char) = chars.get(index.saturating_add(1)) {
+                let closing_index = if *next_char == '\\' {
+                    // 次の文字がバックスラッシュの場合は2文字間に挟んだ先の文字を取得
+                    index.saturating_add(3)
+                } else {
+                    // 1文字間に挟んだ先の文字を取得
+                    index.saturating_add(2)
+                };
+                // 閉じ記号を期待する位置の文字を取得
+                if let Some(closing_char) = chars.get(closing_index) {
+                    // 閉じ記号があったら
+                    if *closing_char == '\'' {
+                        // シングルクオートとそれに挟まれた文字をハイライト
+                        for _ in 0..=closing_index.saturating_sub(*index) {
+                            self.highlighting.push(highlighting::Type::Character);
+                            *index = index.saturating_add(1);
+                        }
+                        // ハイライトした
+                        return true;
                     }
-                    if *c == '"' {
-                        // 文字列終了
-                        in_string = false;
-                        prev_is_separator = true;
-                    } else {
-                        // 文字列継続
-                        prev_is_separator = false;
-                    }
-                    index += 1;
-                    continue;
-                } else if prev_is_separator && *c == '"' {
-                    // 文字列の外で、前の文字が区切り文字で、現在の文字がダブルクォートの場合
-                    // 通常の文字と連続して存在するダブルクオートは文字列の開始と判定しない
-                    // 文字列開始
-                    highlighting.push(highlighting::Type::String);
-                    in_string = true;
-                    prev_is_separator = true;
-                    index += 1;
-                    continue;
                 }
             }
-            // 文字列の外に/が存在した場合
-            if opts.comments() && *c == '/' {
-                if let Some(next_char) = chars.get(index.saturating_add(1)) {
-                    // 連続して/が存在する場合はコメントと判定
-                    if *next_char == '/' {
-                        for _ in index..chars.len() {
-                            // 行末まで全てコメント
-                            highlighting.push(highlighting::Type::Comment);
-                        }
-                        // 行のハイライト処理終了
+        }
+        // ハイライトしなかった
+        false
+    }
+
+    fn highlight_comment(
+        &mut self,
+        index: &mut usize,
+        opts: HighlightingOptions,
+        c: char,
+        chars: &[char],
+    ) -> bool {
+        // スラッシュが見つかった場合
+        if opts.comments() && c == '/' && *index < chars.len() {
+            if let Some(next_char) = chars.get(index.saturating_add(1)) {
+                // 連続して/が存在する場合はコメントと判定
+                if *next_char == '/' {
+                    // 行末まで全てコメント
+                    for _ in *index..chars.len() {
+                        self.highlighting.push(highlighting::Type::Comment);
+                        *index = index.saturating_add(1);
+                    }
+                    // ハイライトした
+                    return true;
+                }
+            };
+        }
+        // ハイライトしなかった
+        false
+    }
+    fn highlight_string(
+        &mut self,
+        index: &mut usize,
+        opts: HighlightingOptions,
+        c: char,
+        chars: &[char],
+    ) -> bool {
+        if opts.strings() && c == '"' {
+            // 閉じ記号が見つかるか行末に着くまで繰り返す
+            loop {
+                self.highlighting.push(highlighting::Type::String);
+                *index = index.saturating_add(1);
+                if let Some(next_char) = chars.get(*index) {
+                    // 閉じ記号が見つかったら終了
+                    if *next_char == '"' {
                         break;
                     }
-                };
-            }
-            // 現在の文字が文字列の中でなければ
-            // 数字にハイライトを付ける場合
-            if opts.numbers() {
-                // 現在の文字が数字で、前の文字が区切り文字または数字の場合
-                // または数字の後に小数点が来た場合(小数点)
-                if (c.is_ascii_digit()
-                    && (prev_is_separator || *previous_highlight == highlighting::Type::Number))
-                    || (*c == '.' && *previous_highlight == highlighting::Type::Number)
-                {
-                    // 数字としてハイライト
-                    highlighting.push(highlighting::Type::Number);
                 } else {
-                    // ハイライトなし
-                    highlighting.push(highlighting::Type::None);
+                    // 行末だったら終了
+                    break;
                 }
-            } else {
-                // ハイライトなし
-                highlighting.push(highlighting::Type::None);
             }
-            // 区切り文字または空白文字の場合はtrue
-            prev_is_separator = c.is_ascii_punctuation() || c.is_ascii_whitespace();
-            // 次の文字へ
-            index += 1;
+            self.highlighting.push(highlighting::Type::String);
+            *index = index.saturating_add(1);
+            // 文字列が存在した
+            return true;
         }
-        // 1行分のハイライトを更新
-        self.highlighting = highlighting;
+        // 文字列が存在しない
+        false
     }
+
+    fn highlight_number(
+        &mut self,
+        index: &mut usize,
+        opts: HighlightingOptions,
+        c: char,
+        chars: &[char],
+    ) -> bool {
+        if opts.numbers() && c.is_ascii_digit() {
+            if *index > 0 {
+                #[allow(clippy::indexing_slicing, clippy::integer_arithmetic)]
+                let prev_char = chars[*index - 1];
+                // 一個前の文字が通常の文字など
+                if !prev_char.is_ascii_punctuation() && !prev_char.is_ascii_whitespace() {
+                    // 数字のハイライトはしない
+                    return false;
+                }
+            }
+            loop {
+                self.highlighting.push(highlighting::Type::Number);
+                *index = index.saturating_add(1);
+                if let Some(next_char) = chars.get(*index) {
+                    if *next_char != '.' && !next_char.is_ascii_digit() {
+                        // 数字またはカンマ以外が見つかったらハイライト終了
+                        break;
+                    }
+                } else {
+                    // 行末だったら終了
+                    break;
+                }
+            }
+            // 数字だった
+            return true;
+        }
+        // 数字でなかった
+        false
+    }
+    pub fn highlight(&mut self, opts: HighlightingOptions, word: Option<&str>) {
+        // ハイライトを初期化
+        self.highlighting = Vec::new();
+        let chars: Vec<char> = self.string.chars().collect();
+        let mut index = 0;
+        // １文字ずつ処理
+        while let Some(c) = chars.get(index) {
+            if self.highlight_char(&mut index, opts, *c, &chars)
+                || self.highlight_comment(&mut index, opts, *c, &chars)
+                || self.highlight_string(&mut index, opts, *c, &chars)
+                || self.highlight_number(&mut index, opts, *c, &chars)
+            {
+                // オーバーフローしていたら終了
+                if index.checked_add(1).is_none() {
+                    break;
+                }
+                continue;
+            }
+            // どのハイライトにも該当しなかった場合
+            self.highlighting.push(highlighting::Type::None);
+            index = index.saturating_add(1);
+        }
+        // 検索結果のハイライトのみ、他のハイライトを上書きする
+        self.highlight_match(word);
+    }
+
     // 全角文字にも対応した、画面に収まる文字列を返す
     pub fn trim_string(&self, full_width_offset: usize, half_width_area: usize) -> String {
         let mut current_width = 0;
