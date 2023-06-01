@@ -177,11 +177,60 @@ impl Row {
             }
         }
     }
-
+    // 指定された文字列があればハイライト
+    fn highlight_str(
+        &mut self,
+        index: &mut usize,
+        substring: &str,
+        chars: &[char],
+        hl_type: highlighting::Type,
+    ) -> bool {
+        // 指定された文字列が空
+        if substring.is_empty() {
+            return false;
+        }
+        // 文字列から1文字ずつ取り出す
+        for (substring_index, c) in substring.chars().enumerate() {
+            // 行の指定位置から取り出して比較
+            if let Some(next_char) = chars.get(index.saturating_add(substring_index)) {
+                // 指定された文字列と一致しない場合はハイライトしない
+                if *next_char != c {
+                    return false;
+                }
+            } else {
+                // 行末に到達した
+                return false;
+            }
+        }
+        // 指定文字列が見つかった場合
+        for _ in 0..substring.len() {
+            // 対応したハイライトを追加
+            self.highlighting.push(hl_type);
+            *index += 1;
+        }
+        // ハイライト済み
+        true
+    }
+    fn highlight_primary_keywords(
+        &mut self,
+        index: &mut usize,
+        opts: &HighlightingOptions,
+        chars: &[char],
+    ) -> bool {
+        // ハイライトする単語を取得
+        for word in opts.primary_keywords() {
+            // ハイライトした場合はtrueを返す
+            if self.highlight_str(index, word, chars, highlighting::Type::PrimaryKeywords) {
+                return true;
+            }
+        }
+        // ハイライトしなかった
+        false
+    }
     fn highlight_char(
         &mut self,
         index: &mut usize,
-        opts: HighlightingOptions,
+        opts: &HighlightingOptions,
         c: char,
         chars: &[char],
     ) -> bool {
@@ -218,7 +267,7 @@ impl Row {
     fn highlight_comment(
         &mut self,
         index: &mut usize,
-        opts: HighlightingOptions,
+        opts: &HighlightingOptions,
         c: char,
         chars: &[char],
     ) -> bool {
@@ -243,7 +292,7 @@ impl Row {
     fn highlight_string(
         &mut self,
         index: &mut usize,
-        opts: HighlightingOptions,
+        opts: &HighlightingOptions,
         c: char,
         chars: &[char],
     ) -> bool {
@@ -274,7 +323,7 @@ impl Row {
     fn highlight_number(
         &mut self,
         index: &mut usize,
-        opts: HighlightingOptions,
+        opts: &HighlightingOptions,
         c: char,
         chars: &[char],
     ) -> bool {
@@ -307,7 +356,7 @@ impl Row {
         // 数字でなかった
         false
     }
-    pub fn highlight(&mut self, opts: HighlightingOptions, word: Option<&str>) {
+    pub fn highlight(&mut self, opts: &HighlightingOptions, word: Option<&str>) {
         // ハイライトを初期化
         self.highlighting = Vec::new();
         let chars: Vec<char> = self.string.chars().collect();
@@ -316,6 +365,7 @@ impl Row {
         while let Some(c) = chars.get(index) {
             if self.highlight_char(&mut index, opts, *c, &chars)
                 || self.highlight_comment(&mut index, opts, *c, &chars)
+                || self.highlight_primary_keywords(&mut index, &opts, &chars)
                 || self.highlight_string(&mut index, opts, *c, &chars)
                 || self.highlight_number(&mut index, opts, *c, &chars)
             {
