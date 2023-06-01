@@ -206,10 +206,46 @@ impl Row {
         for _ in 0..substring.len() {
             // 対応したハイライトを追加
             self.highlighting.push(hl_type);
-            *index += 1;
+            *index = index.saturating_add(1);
         }
         // ハイライト済み
         true
+    }
+    fn highlight_keywords(
+        &mut self,
+        index: &mut usize,
+        chars: &[char],
+        keywords: &[String],
+        hl_type: highlighting::Type,
+    ) -> bool {
+        // 前の文字を取得
+        if *index > 0 {
+            #[allow(clippy::indexing_slicing, clippy::integer_arithmetic)]
+            let prev_char = chars[*index - 1];
+            // 前の文字がセパレータでなかったら
+            if !is_separator(prev_char) {
+                // ハイライトすべきキーワードとはみなさない
+                return false;
+            }
+        }
+        // ハイライトする単語を取得
+        for word in keywords {
+            if *index < chars.len().saturating_sub(word.len()) {
+                #[allow(clippy::indexing_slicing, clippy::integer_arithmetic)]
+                let next_char = chars[*index + word.len()];
+                // 現在位置にキーワードがあると仮定して、キーワードの後にセパレータが無い場合
+                if !is_separator(next_char) {
+                    // ハイライトすべきキーワードは無いと判断する
+                    continue;
+                }
+            }
+            // ハイライトした場合はtrueを返す
+            if self.highlight_str(index, word, chars, hl_type) {
+                return true;
+            }
+        }
+        // ハイライトしなかった
+        false
     }
     fn highlight_primary_keywords(
         &mut self,
@@ -217,15 +253,25 @@ impl Row {
         opts: &HighlightingOptions,
         chars: &[char],
     ) -> bool {
-        // ハイライトする単語を取得
-        for word in opts.primary_keywords() {
-            // ハイライトした場合はtrueを返す
-            if self.highlight_str(index, word, chars, highlighting::Type::PrimaryKeywords) {
-                return true;
-            }
-        }
-        // ハイライトしなかった
-        false
+        self.highlight_keywords(
+            index,
+            chars,
+            opts.primary_keywords(),
+            highlighting::Type::PrimaryKeywords,
+        )
+    }
+    fn highlight_secondary_keywords(
+        &mut self,
+        index: &mut usize,
+        opts: &HighlightingOptions,
+        chars: &[char],
+    ) -> bool {
+        self.highlight_keywords(
+            index,
+            chars,
+            opts.secondary_keywords(),
+            highlighting::Type::SecondaryKeywords,
+        )
     }
     fn highlight_char(
         &mut self,
@@ -331,8 +377,8 @@ impl Row {
             if *index > 0 {
                 #[allow(clippy::indexing_slicing, clippy::integer_arithmetic)]
                 let prev_char = chars[*index - 1];
-                // 一個前の文字が通常の文字など
-                if !prev_char.is_ascii_punctuation() && !prev_char.is_ascii_whitespace() {
+                // 一個前の文字がセパレータ
+                if !is_separator(prev_char) {
                     // 数字のハイライトはしない
                     return false;
                 }
@@ -365,7 +411,8 @@ impl Row {
         while let Some(c) = chars.get(index) {
             if self.highlight_char(&mut index, opts, *c, &chars)
                 || self.highlight_comment(&mut index, opts, *c, &chars)
-                || self.highlight_primary_keywords(&mut index, &opts, &chars)
+                || self.highlight_primary_keywords(&mut index, opts, &chars)
+                || self.highlight_secondary_keywords(&mut index, opts, &chars)
                 || self.highlight_string(&mut index, opts, *c, &chars)
                 || self.highlight_number(&mut index, opts, *c, &chars)
             {
@@ -460,4 +507,8 @@ impl Row {
         let string = self.trim_string(0, half_width_end);
         UnicodeWidthStr::width(&string[..])
     }
+}
+
+fn is_separator(c: char) -> bool {
+    c.is_ascii_punctuation() || c.is_ascii_whitespace()
 }
