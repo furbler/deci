@@ -22,11 +22,14 @@ impl Document {
         let contents = fs::read_to_string(filename)?;
         let file_type = FileType::from(filename);
         let mut rows = Vec::new();
+        // 行がコメントから始まるか否か
+        let mut start_with_comment = false;
         // 一行ずつ保存する
         for value in contents.lines() {
             let mut row = Row::from(value);
             // 行全体のハイライトを行う
-            row.highlight(file_type.highlighting_options(), None);
+            start_with_comment =
+                row.highlight(file_type.highlighting_options(), None, start_with_comment);
             rows.push(row);
         }
         Ok(Self {
@@ -65,8 +68,8 @@ impl Document {
             let current_row = &mut self.rows[at.y];
             let mut new_row = current_row.split(at.x);
             // 分割前後の行をハイライト
-            current_row.highlight(self.file_type.highlighting_options(), None);
-            new_row.highlight(self.file_type.highlighting_options(), None);
+            current_row.highlight(self.file_type.highlighting_options(), None, false);
+            new_row.highlight(self.file_type.highlighting_options(), None, false);
             // 後半行を挿入
             #[allow(clippy::integer_arithmetic)]
             self.rows.insert(at.y + 1, new_row);
@@ -90,12 +93,12 @@ impl Document {
             #[allow(clippy::indexing_slicing)]
             let row = &mut self.rows[at.y];
             row.insert(at.x, c);
-            row.highlight(self.file_type.highlighting_options(), None);
+            row.highlight(self.file_type.highlighting_options(), None, false);
         } else {
             // ドキュメント末尾に入力された文字を含んだ新しい行を追加
             let mut row = Row::default();
             row.insert(0, c);
-            row.highlight(self.file_type.highlighting_options(), None);
+            row.highlight(self.file_type.highlighting_options(), None, false);
             self.rows.push(row);
         }
     }
@@ -117,11 +120,11 @@ impl Document {
             let row = &mut self.rows[at.y];
             // 結合
             row.append(&next_row);
-            row.highlight(self.file_type.highlighting_options(), None);
+            row.highlight(self.file_type.highlighting_options(), None, false);
         } else {
             let row = &mut self.rows[at.y];
             row.delete(at.x);
-            row.highlight(self.file_type.highlighting_options(), None);
+            row.highlight(self.file_type.highlighting_options(), None, false);
         }
     }
     pub fn save(&mut self) -> Result<(), Error> {
@@ -129,12 +132,18 @@ impl Document {
         if let Some(file_name) = &self.file_name {
             let mut file = fs::File::create(file_name)?;
             self.file_type = FileType::from(file_name);
+            // 行がコメントから始まるか否か
+            let mut start_with_comment = false;
             // 一行ずつ保存
             for row in &mut self.rows {
                 file.write_all(row.as_bytes())?;
                 file.write_all(b"\n")?;
                 // ハイライト更新
-                row.highlight(self.file_type.highlighting_options(), None);
+                start_with_comment = row.highlight(
+                    self.file_type.highlighting_options(),
+                    None,
+                    start_with_comment,
+                );
             }
             // 更新フラグを下ろす
             self.dirty = false;
@@ -190,8 +199,13 @@ impl Document {
         None
     }
     pub fn highlight(&mut self, word: Option<&str>) {
+        let mut start_with_comment = false;
         for row in &mut self.rows {
-            row.highlight(self.file_type.highlighting_options(), word);
+            start_with_comment = row.highlight(
+                self.file_type.highlighting_options(),
+                word,
+                start_with_comment,
+            );
         }
     }
 }

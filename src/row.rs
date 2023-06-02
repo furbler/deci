@@ -177,6 +177,38 @@ impl Row {
             }
         }
     }
+    #[allow(clippy::indexing_slicing, clippy::integer_arithmetic)]
+    fn highlight_multiline_comment(
+        &mut self,
+        index: &mut usize,
+        opts: &HighlightingOptions,
+        c: char,
+        chars: &[char],
+    ) -> bool {
+        if opts.comments() && c == '/' && *index < chars.len() {
+            if let Some(next_char) = chars.get(index.saturating_add(1)) {
+                // /*という文字列を発見
+                if *next_char == '*' {
+                    // 閉じ記号の場所か、行末までハイライト(同行に複数のコメントにも対応)
+                    let closing_index = if let Some(closing_index) =
+                        self.find("*/", *index + 2, SearchDirection::Forward)
+                    {
+                        *index + closing_index + 4
+                    } else {
+                        chars.len()
+                    };
+                    for _ in *index..closing_index {
+                        self.highlighting.push(highlighting::Type::MultilineComment);
+                        *index += 1;
+                    }
+                    // コメントハイライト完了
+                    return true;
+                }
+            };
+        }
+        // ハイライトしなかった
+        false
+    }
     // 指定された文字列があればハイライト
     fn highlight_str(
         &mut self,
@@ -402,13 +434,45 @@ impl Row {
         // 数字でなかった
         false
     }
-    pub fn highlight(&mut self, opts: &HighlightingOptions, word: Option<&str>) {
+    // 次の行がコメントで始まる場合はtrueを返す
+    #[allow(clippy::indexing_slicing, clippy::integer_arithmetic)]
+    pub fn highlight(
+        &mut self,
+        opts: &HighlightingOptions,
+        word: Option<&str>,
+        start_with_comment: bool,
+    ) -> bool {
         // ハイライトを初期化
         self.highlighting = Vec::new();
         let chars: Vec<char> = self.string.chars().collect();
         let mut index = 0;
+        let mut in_ml_comment = start_with_comment;
+        // 現在行がコメントから始まっている場合
+        if in_ml_comment {
+            // 閉じ記号を探す
+            let closing_index =
+                if let Some(closing_index) = self.find("*/", 0, SearchDirection::Forward) {
+                    closing_index + 2
+                } else {
+                    chars.len()
+                };
+            // 閉じ記号または行末までハイライト
+            for _ in 0..closing_index {
+                self.highlighting.push(highlighting::Type::MultilineComment);
+            }
+            index = closing_index;
+        }
         // １文字ずつ処理
         while let Some(c) = chars.get(index) {
+            // コメントかを最初に確認
+            if self.highlight_multiline_comment(&mut index, opts, *c, &chars) {
+                // ここで行が終わったときのためにコメントフラグを立てておく
+                in_ml_comment = true;
+                // 次の文字に進む
+                continue;
+            }
+            in_ml_comment = false;
+            // この記述順次第でハイライトが変わるので注意
             if self.highlight_char(&mut index, opts, *c, &chars)
                 || self.highlight_comment(&mut index, opts, *c, &chars)
                 || self.highlight_primary_keywords(&mut index, opts, &chars)
@@ -420,6 +484,7 @@ impl Row {
                 if index.checked_add(1).is_none() {
                     break;
                 }
+                // 次の文字に進む
                 continue;
             }
             // どのハイライトにも該当しなかった場合
@@ -428,6 +493,12 @@ impl Row {
         }
         // 検索結果のハイライトのみ、他のハイライトを上書きする
         self.highlight_match(word);
+        // 行末まで複数行コメント内で、かつ行末尾に閉じ記号がない場合
+        if in_ml_comment && &self.string[self.len().saturating_sub(2)..] != "*/" {
+            // 次の行はコメントから始まる
+            return true;
+        }
+        false
     }
 
     // 全角文字にも対応した、画面に収まる文字列を返す
