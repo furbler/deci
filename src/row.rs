@@ -108,7 +108,7 @@ impl Row {
     pub fn as_bytes(&self) -> &[u8] {
         self.string.as_bytes()
     }
-    // 自身のafter文字目以降で引数の文字列が見つかったら全角文字単位での位置を返す
+    // 自身のafter文字目以降で引数の文字列が見つかったら、行頭からの全角文字単位での位置を返す
     pub fn find(&self, query: &str, at: usize, direction: SearchDirection) -> Option<usize> {
         // 指定位置が行末の時は検索結果無し
         if at > self.len_full_width || query.is_empty() {
@@ -193,7 +193,7 @@ impl Row {
                     let closing_index = if let Some(closing_index) =
                         self.find("*/", *index + 2, SearchDirection::Forward)
                     {
-                        *index + closing_index + 4
+                        closing_index + 2
                     } else {
                         chars.len()
                     };
@@ -452,10 +452,16 @@ impl Row {
             // 閉じ記号を探す
             let closing_index =
                 if let Some(closing_index) = self.find("*/", 0, SearchDirection::Forward) {
+                    // 一番行末に閉じ記号が見つかった場合
+                    if closing_index + 2 == self.len() {
+                        // コメントフラグを下ろす
+                        in_ml_comment = false;
+                    }
                     closing_index + 2
                 } else {
                     chars.len()
                 };
+
             // 閉じ記号または行末までハイライト
             for _ in 0..closing_index {
                 self.highlighting.push(highlighting::Type::MultilineComment);
@@ -494,7 +500,7 @@ impl Row {
         // 検索結果のハイライトのみ、他のハイライトを上書きする
         self.highlight_match(word);
         // 行末まで複数行コメント内で、かつ行末尾に閉じ記号がない場合
-        if in_ml_comment && &self.string[self.len().saturating_sub(2)..] != "*/" {
+        if in_ml_comment {
             // 次の行はコメントから始まる
             return true;
         }
