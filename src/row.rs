@@ -151,7 +151,7 @@ impl Row {
         }
         None
     }
-    fn highlight_match(&mut self, word: Option<&str>) {
+    fn highlight_match(&mut self, word: &Option<String>) {
         // 検索文字列が指定されていた場合のみハイライト追加
         if let Some(word) = word {
             // 検索文字列が空文字列の場合はハイライトなし
@@ -439,7 +439,7 @@ impl Row {
     pub fn highlight(
         &mut self,
         opts: &HighlightingOptions,
-        word: Option<&str>,
+        word: &Option<String>,
         start_with_comment: bool,
     ) -> bool {
         // ハイライトを初期化
