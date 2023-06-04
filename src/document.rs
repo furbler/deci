@@ -66,10 +66,7 @@ impl Document {
             // atで行を分割(atは後半の行に含まれる)
             #[allow(clippy::indexing_slicing)]
             let current_row = &mut self.rows[at.y];
-            let mut new_row = current_row.split(at.x);
-            // 分割前後の行をハイライト
-            current_row.highlight(self.file_type.highlighting_options(), None, false);
-            new_row.highlight(self.file_type.highlighting_options(), None, false);
+            let new_row = current_row.split(at.x);
             // 後半行を挿入
             #[allow(clippy::integer_arithmetic)]
             self.rows.insert(at.y + 1, new_row);
@@ -86,21 +83,18 @@ impl Document {
         if c == '\n' {
             // 指定位置の下に空行を挿入
             self.insert_newline(at);
-            return;
-        }
-        if at.y < self.rows.len() {
+        } else if at.y < self.rows.len() {
             // 指定された位置の後ろに文字を挿入
             #[allow(clippy::indexing_slicing)]
             let row = &mut self.rows[at.y];
             row.insert(at.x, c);
-            row.highlight(self.file_type.highlighting_options(), None, false);
         } else {
             // ドキュメント末尾に入力された文字を含んだ新しい行を追加
             let mut row = Row::default();
             row.insert(0, c);
-            row.highlight(self.file_type.highlighting_options(), None, false);
             self.rows.push(row);
         }
+        self.highlight(None);
     }
     #[allow(clippy::integer_arithmetic, clippy::indexing_slicing)]
     pub fn delete(&mut self, at: &Position) {
@@ -120,12 +114,11 @@ impl Document {
             let row = &mut self.rows[at.y];
             // 結合
             row.append(&next_row);
-            row.highlight(self.file_type.highlighting_options(), None, false);
         } else {
             let row = &mut self.rows[at.y];
             row.delete(at.x);
-            row.highlight(self.file_type.highlighting_options(), None, false);
         }
+        self.highlight(None);
     }
     pub fn save(&mut self) -> Result<(), Error> {
         // ファイル名取得
