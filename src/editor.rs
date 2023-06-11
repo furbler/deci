@@ -118,7 +118,7 @@ impl Editor {
             Terminal::clear_screen();
             println!("エディタを終了します。さようなら。\r");
         } else {
-            // 画面に表示されている範囲から前をハイライト
+            // 画面に表示されている部分とその前をハイライト
             self.document.highlight(
                 &self.highlighted_word,
                 Some(

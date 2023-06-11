@@ -11,6 +11,7 @@ use crate::HighlightingOptions;
 pub struct Row {
     string: String,
     highlighting: Vec<highlighting::Type>,
+    pub is_highlighted: bool,
     // 全角文字にも対応した行の文字数
     len_full_width: usize,
 }
@@ -20,6 +21,7 @@ impl From<&str> for Row {
         Self {
             string: String::from(slice),
             highlighting: Vec::new(),
+            is_highlighted: false,
             len_full_width: slice.graphemes(true).count(),
         }
     }
@@ -98,20 +100,22 @@ impl Row {
         // 前半行
         self.string = row;
         self.len_full_width = length;
+        self.is_highlighted = false;
         // 後半行
         Self {
             string: splitted_row,
             len_full_width: splitted_length,
             highlighting: Vec::new(),
+            is_highlighted: false,
         }
     }
     pub fn as_bytes(&self) -> &[u8] {
         self.string.as_bytes()
     }
-    // 自身のafter文字目以降で引数の文字列が見つかったら、行頭からの全角文字単位での位置を返す
+    // 自身のat文字目以降(以前)で引数の文字列が見つかったら、行頭からの全角文字単位での位置を返す
     pub fn find(&self, query: &str, at: usize, direction: SearchDirection) -> Option<usize> {
         // 指定位置が行末の時は検索結果無し
-        if at > self.len_full_width || query.is_empty() {
+        if at > self.len() || query.is_empty() {
             return None;
         }
         // 検索方向により検索範囲を決める
@@ -442,9 +446,33 @@ impl Row {
         word: &Option<String>,
         start_with_comment: bool,
     ) -> bool {
-        // ハイライトを初期化
-        self.highlighting = Vec::new();
         let chars: Vec<char> = self.string.chars().collect();
+        // ハイライトが更新済みかつ検索中でない場合
+        if self.is_highlighted && word.is_none() {
+            if let Some(hl_type) = self.highlighting.last() {
+                // 行末が複数行コメントで終わっている場合
+                if *hl_type == highlighting::Type::MultilineComment {
+                    if let Some(closing_index) =
+                        self.find("*/", self.len(), SearchDirection::Backward)
+                    {
+                        // 行の最後が複数行コメントで、閉じ記号で終わっている場合
+                        if closing_index + 2 == self.len() {
+                            // 次の行はコメントで始まらない
+                            return false;
+                        }
+                    }
+                    // コメント閉じ記号が無い、または行末以外の場所にある場合は次の行はコメントで始まる
+                    return true;
+                }
+            } else if start_with_comment {
+                // 空行で、かつコメントから始まっていた場合は次の行もコメントで始まる
+                return true;
+            }
+            // 次の行はコメントで始まらない
+            return false;
+        }
+        // ハイライトが未更新、または検索中の場合はハイライトを更新する
+        self.highlighting = Vec::new();
         let mut index = 0;
         let mut in_ml_comment = start_with_comment;
         // 現在行がコメントから始まっている場合
@@ -499,11 +527,21 @@ impl Row {
         }
         // 検索結果のハイライトのみ、他のハイライトを上書きする
         self.highlight_match(word);
-        // 行末まで複数行コメント内で、かつ行末尾に閉じ記号がない場合
+        // 行末のハイライトが複数行コメント
         if in_ml_comment {
-            // 次の行はコメントから始まる
-            return true;
+            if let Some(closing_index) = self.find("*/", self.len(), SearchDirection::Backward) {
+                // 行末に閉じ記号が無い場合
+                if closing_index + 2 != self.len() {
+                    // 次の行はコメントから始まる
+                    return true;
+                }
+            } else {
+                // コメントが閉じていなければ次の行はコメントから始まる
+                return true;
+            }
         }
+        self.is_highlighted = true;
+        // 次の行はコメントで始まらない
         false
     }
 

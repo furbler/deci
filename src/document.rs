@@ -88,6 +88,15 @@ impl Document {
             row.insert(0, c);
             self.rows.push(row);
         }
+        // 挿入位置以降のハイライトを未更新にする
+        self.unhighlight_rows(at.y);
+    }
+    // 指定した位置以降の行をハイライト未更新にする
+    fn unhighlight_rows(&mut self, start: usize) {
+        let start = start.saturating_sub(1);
+        for row in self.rows.iter_mut().skip(start) {
+            row.is_highlighted = false;
+        }
     }
     #[allow(clippy::integer_arithmetic, clippy::indexing_slicing)]
     pub fn delete(&mut self, at: &Position) {
@@ -111,6 +120,7 @@ impl Document {
             let row = &mut self.rows[at.y];
             row.delete(at.x);
         }
+        self.unhighlight_rows(at.y);
     }
     pub fn save(&mut self) -> Result<(), Error> {
         // ファイル名取得
